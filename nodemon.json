@@ -1,0 +1,12 @@
+{
+    "ignore": ["**/node_modules/**", "**/.git/**", "**/target/**"],
+    "watch": [
+        "_scratch/**/*",
+        "crates/**/*",
+        "examples/**/*"
+    ],
+    "ext": "*",
+    "delay": 250,
+    "signal": "SIGTERM",
+    "exec": "clear && env cargo run --package ion_examples -- basic_set_timeout"
+}
