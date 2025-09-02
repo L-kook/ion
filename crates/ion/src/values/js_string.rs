@@ -49,10 +49,25 @@ impl ToJsRaw for JsString {
     }
 }
 
-impl<S: AsRef<str>> IntoJsValue<S> for JsString {
+impl IntoJsValue<String> for JsString {
     fn into_js_value(
         env: &Env,
-        value: S,
+        value: String,
+    ) -> crate::Result<Self> {
+        let Some(value) = v8::String::new(env.context_scope(), value.as_ref()) else {
+            return Err(Error::StringCreateError);
+        };
+
+        Ok(JsString {
+            handle: Box::into_raw(Box::new(value)) as _,
+        })
+    }
+}
+
+impl IntoJsValue<&str> for JsString {
+    fn into_js_value(
+        env: &Env,
+        value: &str,
     ) -> crate::Result<Self> {
         let Some(value) = v8::String::new(env.context_scope(), value.as_ref()) else {
             return Err(Error::StringCreateError);
@@ -78,6 +93,6 @@ impl Env {
         &self,
         value: impl AsRef<str>,
     ) -> crate::Result<JsString> {
-        JsString::into_js_value(self, value)
+        JsString::into_js_value(self, value.as_ref())
     }
 }

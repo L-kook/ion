@@ -16,3 +16,10 @@ impl LocalRuntimeExt for tokio::runtime::Runtime {
         LocalSet::default().block_on(self, future)
     }
 }
+
+pub fn local_thread_runtime<F: Future>(fut: F) -> std::io::Result<F::Output> {
+    Ok(tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?
+        .local_block_on(fut))
+}

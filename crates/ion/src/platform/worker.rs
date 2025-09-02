@@ -10,8 +10,9 @@ use flume::bounded;
 use flume::unbounded;
 
 use crate::Error;
-use crate::platform::tokio_ext::LocalRuntimeExt;
+use crate::JsExtension;
 use crate::utils::channel::oneshot;
+use crate::utils::tokio_ext::LocalRuntimeExt;
 
 use super::Env;
 use super::JsContext;
@@ -33,7 +34,7 @@ pub(crate) enum JsWorkerEvent {
 }
 
 impl JsWorker {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(extensions: Vec<Arc<JsExtension>>) -> Self {
         let (tx, rx) = unbounded::<JsWorkerEvent>();
 
         // Create a dedicated thread to host the isolate
@@ -58,6 +59,24 @@ impl JsWorker {
                                 JsWorkerEvent::CreateContext(tx_resolve) => {
                                     let env = Env::new(isolate_ptr);
                                     let id = env.id();
+
+                                    for extension in &extensions {
+                                        match extension.as_ref() {
+                                            JsExtension::NativeModuleWithBinding {
+                                                module_name: _,
+                                                binding: _,
+                                                hook: _,
+                                            } => todo!(),
+                                            JsExtension::NativeModule {
+                                                module_name: _,
+                                                hook: _,
+                                            } => {
+                                                todo!()
+                                            }
+                                            JsExtension::NativeGlobal { hook: _ } => todo!(),
+                                            JsExtension::GlobalBinding { binding: _ } => todo!(),
+                                        }
+                                    }
 
                                     contexts.insert(id.clone(), env);
 

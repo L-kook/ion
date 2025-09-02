@@ -7,6 +7,8 @@ use std::thread;
 use flume::Sender;
 use flume::unbounded;
 
+use crate::JsExtension;
+
 use super::JsWorker;
 
 pub(crate) static HAS_INIT: AtomicBool = AtomicBool::new(false);
@@ -17,6 +19,8 @@ pub(crate) static PLATFORM: LazyLock<Sender<PlatformEvent>> = LazyLock::new(|| {
     // Dedicated thread for the v8 platform
     // All Isolates need to be in this thread or in children threads of this thread
     thread::spawn(move || {
+        let mut extensions = Vec::<Arc<JsExtension>>::new();
+
         while let Ok(event) = rx.recv() {
             match event {
                 PlatformEvent::Init(args) => {
@@ -40,10 +44,17 @@ pub(crate) static PLATFORM: LazyLock<Sender<PlatformEvent>> = LazyLock::new(|| {
                     HAS_INIT.store(true, Ordering::Release);
                 }
                 PlatformEvent::SpawnWorker(tx) => {
-                    if tx.send(Arc::new(JsWorker::new())).is_err() {
+                    if tx
+                        .send(Arc::new(JsWorker::new(extensions.clone())))
+                        .is_err()
+                    {
                         // TODO implement global error handler
                         panic!("Internal error starting worker")
                     };
+                }
+                PlatformEvent::RegisterExtension(extension, tx_reply) => {
+                    extensions.push(Arc::new(extension));
+                    tx_reply.try_send(Ok(())).unwrap();
                 }
             }
         }
@@ -55,4 +66,5 @@ pub(crate) static PLATFORM: LazyLock<Sender<PlatformEvent>> = LazyLock::new(|| {
 pub(crate) enum PlatformEvent {
     Init(Vec<String>),
     SpawnWorker(Sender<Arc<JsWorker>>),
+    RegisterExtension(JsExtension, Sender<crate::Result<()>>),
 }

@@ -3,6 +3,9 @@ use std::sync::Arc;
 use flume::Sender;
 use flume::bounded;
 
+use crate::JsExtension;
+use crate::utils::channel::oneshot;
+
 use super::Error;
 use super::JsWorker;
 use super::platform::PlatformEvent;
@@ -28,6 +31,18 @@ impl JsRuntime {
         };
 
         Ok(worker)
+    }
+
+    /// Register a native extension, available in all contexts
+    pub fn register_extension(
+        &self,
+        extension: JsExtension,
+    ) -> crate::Result<()> {
+        let (tx, rx) = oneshot();
+        self.tx
+            .try_send(PlatformEvent::RegisterExtension(extension, tx))
+            .unwrap();
+        rx.recv().unwrap()
     }
 }
 
