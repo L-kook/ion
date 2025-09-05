@@ -19,7 +19,7 @@ fn main() -> anyhow::Result<()> {
         "basic_set_timeout" => basic_set_timeout::main(),
         "extensions_basic" => extensions_basic::main(),
         "extensions_structured" => extensions_structured::main(),
-        "http_server" => http_server::main(),
+        // "http_server" => http_server::main(),
         _ => Err(anyhow::anyhow!("No example for: \"{}\"", example)),
     }
 }

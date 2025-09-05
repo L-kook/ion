@@ -1,15 +1,27 @@
 use std::sync::Arc;
 use std::sync::LazyLock;
+use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::thread;
+use std::thread::JoinHandle;
 
 use flume::Sender;
 use flume::unbounded;
 
 use crate::JsExtension;
+use crate::platform::worker::JsWorkerEvent;
+use crate::platform::worker::start_js_worker_thread;
 
-use super::JsWorker;
+pub(crate) enum PlatformEvent {
+    Init {
+        args: Vec<String>,
+    },
+    SpawnWorker {
+        resolve: Sender<(Sender<JsWorkerEvent>, Mutex<Option<JoinHandle<()>>>)>,
+    },
+    RegisterExtension(JsExtension, Sender<crate::Result<()>>),
+}
 
 pub(crate) static HAS_INIT: AtomicBool = AtomicBool::new(false);
 
@@ -23,7 +35,7 @@ pub(crate) static PLATFORM: LazyLock<Sender<PlatformEvent>> = LazyLock::new(|| {
 
         while let Ok(event) = rx.recv() {
             match event {
-                PlatformEvent::Init(args) => {
+                PlatformEvent::Init { args } => {
                     let platform = v8::new_default_platform(0, false).make_shared();
 
                     if !args.is_empty() {
@@ -43,11 +55,10 @@ pub(crate) static PLATFORM: LazyLock<Sender<PlatformEvent>> = LazyLock::new(|| {
 
                     HAS_INIT.store(true, Ordering::Release);
                 }
-                PlatformEvent::SpawnWorker(tx) => {
-                    if tx
-                        .send(Arc::new(JsWorker::new(extensions.clone())))
-                        .is_err()
-                    {
+                PlatformEvent::SpawnWorker { resolve } => {
+                    let (tx, handle) = start_js_worker_thread();
+
+                    if resolve.try_send((tx, handle)).is_err() {
                         // TODO implement global error handler
                         panic!("Internal error starting worker")
                     };
@@ -62,9 +73,3 @@ pub(crate) static PLATFORM: LazyLock<Sender<PlatformEvent>> = LazyLock::new(|| {
 
     tx
 });
-
-pub(crate) enum PlatformEvent {
-    Init(Vec<String>),
-    SpawnWorker(Sender<Arc<JsWorker>>),
-    RegisterExtension(JsExtension, Sender<crate::Result<()>>),
-}

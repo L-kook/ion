@@ -1,10 +1,10 @@
 use crate::Env;
 use crate::ToJsUnknown;
+use crate::platform::Value;
 use crate::values::FromJsValue;
 use crate::values::JsObjectValue;
 use crate::values::JsValue;
 use crate::values::ToJsValue;
-use crate::platform::Value;
 
 #[derive(Clone)]
 pub struct JsObject {

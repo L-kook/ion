@@ -1,5 +1,6 @@
 #![allow(non_camel_case_types)]
-use std::{ffi::c_void, ops::Deref};
+use std::ffi::c_void;
+use std::ops::Deref;
 
 pub type v8_value = *mut c_void;
 

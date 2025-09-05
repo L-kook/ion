@@ -1,9 +1,9 @@
 use crate::Env;
 use crate::ToJsUnknown;
+use crate::platform::Value;
 use crate::values::FromJsValue;
 use crate::values::JsValue;
 use crate::values::ToJsValue;
-use crate::platform::Value;
 
 #[derive(Clone)]
 pub struct JsNumber {
@@ -113,5 +113,14 @@ impl ToJsValue for JsNumber {
         val: Self,
     ) -> crate::Result<Value> {
         Ok(val.value.clone())
+    }
+}
+
+impl Env {
+    pub fn int32_value(
+        &self,
+        value: i32,
+    ) -> crate::Result<JsNumber> {
+        JsNumber::from_i32(self, value)
     }
 }

@@ -1,130 +1,130 @@
-mod handler;
-mod http1;
-mod request;
-mod response;
-mod worker_pool;
+// mod handler;
+// mod http1;
+// mod request;
+// mod response;
+// mod worker_pool;
 
-// use std::sync::Arc;
+// // use std::sync::Arc;
 
-use ion::JsRuntime;
-// use tokio::io::AsyncWriteExt;
+// use ion::JsRuntime;
+// // use tokio::io::AsyncWriteExt;
 
-// use self::http1::ResponseBuilderExt;
-// use self::worker_pool::WorkerPool;
+// // use self::http1::ResponseBuilderExt;
+// // use self::worker_pool::WorkerPool;
 
-// const HANDLER: &str = include_str!("../../js/faas-handlers/index.handler.js");
+// // const HANDLER: &str = include_str!("../../js/faas-handlers/index.handler.js");
 
-// #[derive(Debug)]
-// pub enum HttpEvent {
-//     WriteHead(u32),
-//     Write(String),
-//     End,
+// // #[derive(Debug)]
+// // pub enum HttpEvent {
+// //     WriteHead(u32),
+// //     Write(String),
+// //     End,
+// // }
+
+// pub fn main() -> anyhow::Result<()> {
+//     // Start the runtime from the main thread
+//     let runtime = ion::platform::initialize_once()?;
+
+//     tokio::runtime::Builder::new_multi_thread()
+//         .enable_all()
+//         .worker_threads(num_cpus::get_physical())
+//         .build()
+//         .unwrap()
+//         .block_on(main_async(runtime))
 // }
 
-pub fn main() -> anyhow::Result<()> {
-    // Start the runtime from the main thread
-    let runtime = ion::platform::initialize_once()?;
+// async fn main_async(runtime: JsRuntime) -> anyhow::Result<()> {
+//     // // Spawn a pool of JavaScript worker threads. Load balance with round-robin
+//     // let workers = Arc::new(WorkerPool::new(&runtime, num_cpus::get_physical()));
 
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .worker_threads(num_cpus::get_physical())
-        .build()
-        .unwrap()
-        .block_on(main_async(runtime))
-}
+//     // http1::http1_server("0.0.0.0:4200", move |_req, res| {
+//     //     let workers = workers.clone();
+//     //     async move {
+//     //         // Spawn a JavaScript context on one of the worker threads
+//     //         let ctx = workers.create_context();
 
-async fn main_async(runtime: JsRuntime) -> anyhow::Result<()> {
-    // // Spawn a pool of JavaScript worker threads. Load balance with round-robin
-    // let workers = Arc::new(WorkerPool::new(&runtime, num_cpus::get_physical()));
+//     //         // Channel to communicate with the JavaScript thread
+//     //         let (tx, rx) = ion::utils::channel::channel::<HttpEvent>();
 
-    // http1::http1_server("0.0.0.0:4200", move |_req, res| {
-    //     let workers = workers.clone();
-    //     async move {
-    //         // Spawn a JavaScript context on one of the worker threads
-    //         let ctx = workers.create_context();
+//     //         // Execute javascript on the context thread (non blocking)
+//     //         // Pass in a channel to get calls to the response
+//     //         ctx.exec(move |env| {
+//     //             // Initialize Globals
+//     //             ion::exts::define_console(&env);
+//     //             ion::exts::define_set_interval(&env);
+//     //             ion::exts::define_set_timeout(&env);
 
-    //         // Channel to communicate with the JavaScript thread
-    //         let (tx, rx) = ion::utils::channel::channel::<HttpEvent>();
+//     //             // Run Handler Script
+//     //             env.eval_script(HANDLER)?;
 
-    //         // Execute javascript on the context thread (non blocking)
-    //         // Pass in a channel to get calls to the response
-    //         ctx.exec(move |env| {
-    //             // Initialize Globals
-    //             ion::exts::define_console(&env);
-    //             ion::exts::define_set_interval(&env);
-    //             ion::exts::define_set_timeout(&env);
+//     //             // Open scope to execute handler
+//     //             let scope = &mut env.open_scope();
 
-    //             // Run Handler Script
-    //             env.eval_script(HANDLER)?;
+//     //             // Get handler from globalThis
+//     //             // TODO use module exports
+//     //             let js_handler = handler::get_handler(scope);
 
-    //             // Open scope to execute handler
-    //             let scope = &mut env.open_scope();
+//     //             // Construct req/res types
+//     //             let http_request = request::v8_create_http_request(scope);
+//     //             let http_response = response::v8_create_http_response(scope, &tx);
 
-    //             // Get handler from globalThis
-    //             // TODO use module exports
-    //             let js_handler = handler::get_handler(scope);
+//     //             // Execute handler
+//     //             // TODO promises
+//     //             let recv = v8::undefined(scope);
+//     //             js_handler.call(scope, recv.into(), &[http_request, http_response]);
 
-    //             // Construct req/res types
-    //             let http_request = request::v8_create_http_request(scope);
-    //             let http_response = response::v8_create_http_response(scope, &tx);
+//     //             Ok(())
+//     //         })?;
 
-    //             // Execute handler
-    //             // TODO promises
-    //             let recv = v8::undefined(scope);
-    //             js_handler.call(scope, recv.into(), &[http_request, http_response]);
+//     //         // Construct streamed response
+//     //         let mut res = res.status(200);
+//     //         let mut buf = Vec::<u8>::new();
 
-    //             Ok(())
-    //         })?;
+//     //         // Buffer body until status code is sent (blocking)
+//     //         while let Ok(event) = rx.recv_async().await {
+//     //             match event {
+//     //                 HttpEvent::WriteHead(status) => {
+//     //                     res = res.status(status as u16);
+//     //                     break;
+//     //                 }
+//     //                 HttpEvent::Write(body) => {
+//     //                     buf.extend(body.as_bytes());
+//     //                 }
+//     //                 HttpEvent::End => {
+//     //                     panic!("Cannot end early")
+//     //                 }
+//     //             };
+//     //         }
 
-    //         // Construct streamed response
-    //         let mut res = res.status(200);
-    //         let mut buf = Vec::<u8>::new();
+//     //         // Create a body stream
+//     //         let (res, mut writer) = res.body_stream(1)?;
 
-    //         // Buffer body until status code is sent (blocking)
-    //         while let Ok(event) = rx.recv_async().await {
-    //             match event {
-    //                 HttpEvent::WriteHead(status) => {
-    //                     res = res.status(status as u16);
-    //                     break;
-    //                 }
-    //                 HttpEvent::Write(body) => {
-    //                     buf.extend(body.as_bytes());
-    //                 }
-    //                 HttpEvent::End => {
-    //                     panic!("Cannot end early")
-    //                 }
-    //             };
-    //         }
+//     //         // Spawn a concurrent task to handle async writes to body (non blocking)
+//     //         tokio::task::spawn(async move {
+//     //             writer.write_all(&buf).await.unwrap();
 
-    //         // Create a body stream
-    //         let (res, mut writer) = res.body_stream(1)?;
+//     //             while let Ok(event) = rx.recv_async().await {
+//     //                 match event {
+//     //                     HttpEvent::WriteHead(_status) => {
+//     //                         panic!("Cannot send status twice")
+//     //                     }
+//     //                     HttpEvent::Write(body) => {
+//     //                         writer.write_all(body.as_bytes()).await.unwrap();
+//     //                     }
+//     //                     // TODO automatically end the handler
+//     //                     // Relying on GC to clean up res thereby dropping the Sender is unreliable.
+//     //                     // Options to consider, have the handler return a promise that drops the
+//     //                     // Sender when resolved. This would ignore any async js tasks in the background.
+//     //                     HttpEvent::End => break,
+//     //                 };
+//     //             }
+//     //         });
 
-    //         // Spawn a concurrent task to handle async writes to body (non blocking)
-    //         tokio::task::spawn(async move {
-    //             writer.write_all(&buf).await.unwrap();
+//     //         // Return response
+//     //         Ok(res)
+//     //     }
+//     // })
+//     // .await?;
 
-    //             while let Ok(event) = rx.recv_async().await {
-    //                 match event {
-    //                     HttpEvent::WriteHead(_status) => {
-    //                         panic!("Cannot send status twice")
-    //                     }
-    //                     HttpEvent::Write(body) => {
-    //                         writer.write_all(body.as_bytes()).await.unwrap();
-    //                     }
-    //                     // TODO automatically end the handler
-    //                     // Relying on GC to clean up res thereby dropping the Sender is unreliable.
-    //                     // Options to consider, have the handler return a promise that drops the
-    //                     // Sender when resolved. This would ignore any async js tasks in the background.
-    //                     HttpEvent::End => break,
-    //                 };
-    //             }
-    //         });
-
-    //         // Return response
-    //         Ok(res)
-    //     }
-    // })
-    // .await?;
-
-    Ok(())
-}
+//     Ok(())
+// }

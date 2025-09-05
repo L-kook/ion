@@ -2,14 +2,14 @@ use std::ffi::c_void;
 use std::marker::PhantomData;
 
 use crate::Env;
-use crate::platform::Reference;
 use crate::ToJsUnknown;
+use crate::platform::Reference;
 use crate::platform::ReferenceOwnership;
+use crate::platform::Value;
 use crate::utils::RefCounter;
 use crate::values::FromJsValue;
 use crate::values::JsValue;
 use crate::values::ToJsValue;
-use crate::platform::Value;
 
 pub struct JsExternal<T> {
     pub(crate) value: Value,

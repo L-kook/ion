@@ -2,6 +2,9 @@ use std::ffi::c_void;
 
 use tokio_util::task::TaskTracker;
 
+use crate::FromJsValue;
+use crate::platform::Value;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Env {
     isolate_ptr: *mut v8::Isolate,
@@ -12,7 +15,7 @@ pub struct Env {
 }
 
 impl Env {
-    pub (crate) fn new(
+    pub fn new(
         mut isolate_ptr: impl AsMut<v8::Isolate>,
         mut context: impl AsMut<v8::Local<'static, v8::Context>>,
         mut global_this: impl AsMut<v8::Global<v8::Object>>,
@@ -86,5 +89,24 @@ impl Env {
         duration: u64,
     ) {
         self.timeout(callback, tokio::time::Duration::from_millis(duration));
+    }
+
+    pub fn eval_script<Return: FromJsValue>(
+        &self,
+        code: impl AsRef<str>,
+    ) -> crate::Result<Return> {
+        let scope = &mut self.scope();
+
+        let Some(code) = v8::String::new(scope, code.as_ref()) else {
+            panic!();
+        };
+        let Some(script) = v8::Script::compile(scope, code, None) else {
+            panic!();
+        };
+        let Some(value) = script.run(scope) else {
+            panic!();
+        };
+
+        Return::from_js_value(self, Value::from(value))
     }
 }
