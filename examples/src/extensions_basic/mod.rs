@@ -9,7 +9,7 @@ pub fn main() -> anyhow::Result<()> {
         module_name: "ion:foo".to_string(),
         binding: r#"
             export function foo() {
-                return import.meta.extension.foo
+                return import.meta.ext.foo
             }
         "#
         .to_string(),
@@ -25,7 +25,13 @@ pub fn main() -> anyhow::Result<()> {
     let ctx = worker.create_context()?;
 
     ctx.exec_blocking(|env| {
-        let result = env.eval_script::<JsString>("globalThis.foo()")?;
+        let result = env.eval_script::<JsString>(
+            r#"
+            import { foo } from "ion:foo";
+            foo()
+        "#,
+        )?;
+
         println!("Got: {}", result.get_string()?);
         Ok(())
     })?;

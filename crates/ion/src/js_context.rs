@@ -64,6 +64,8 @@ impl JsContext {
         Ok(())
     }
 
+    /// Evaluate script, ignoring return value. If you need the return value
+    /// use a variant of [`JsContext::exec`] then run [`Env::eval_script`]
     pub fn eval_script(
         &self,
         code: impl AsRef<str>,
