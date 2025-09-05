@@ -1,10 +1,9 @@
-#![allow(warnings)]
 mod utils;
 
 use std::cell::RefCell;
 use std::ffi::c_void;
-use std::rc::Rc;
 
+// #![allow(warnings)]
 use ion::utils::tokio_ext::local_thread_runtime;
 
 // use ion::values::raw::Scope;
@@ -21,9 +20,9 @@ pub fn main() -> anyhow::Result<()> {
     v8::V8::initialize_platform(platform);
     v8::V8::initialize();
 
-    utils::bench(|| main_async())?;
+    // utils::bench(|| main_async())?;
     // local_thread_runtime(main_async())??;
-    // main_async()?;
+    main_async()?;
 
     Ok(())
 }
@@ -31,6 +30,7 @@ pub fn main() -> anyhow::Result<()> {
 // async fn main_async() -> anyhow::Result<()> {
 fn main_async() -> anyhow::Result<()> {
     // Spawn v8 Isolate
+
 
     let mut isolate = v8::Isolate::new(v8::CreateParams::default());
     let isolate_ptr = isolate.as_mut() as *mut v8::Isolate;
@@ -52,7 +52,7 @@ fn main_async() -> anyhow::Result<()> {
         let _context_scope = v8::ContextScope::new(handle_scope, *context);
         let mut async_tasks = Box::new(TaskTracker::new());
 
-        let env = Env::new(
+        let mut env = Env::new(
             &mut isolate,
             &mut context,
             &mut global_this,
@@ -60,41 +60,48 @@ fn main_async() -> anyhow::Result<()> {
         );
 
         {
-            let scope = &mut env.scope();
-            {
-                let mut data = vec![];
-                for i in 0..10000 {
-                    data.push(i as usize)
-                }
-                let data = Rc::new(data);
-                let scope = &mut v8::HandleScope::new(scope);
-                let global_this = env.global_this();
-                let global_this = global_this.open(scope);
-
-                let key = JsString::new(&env, "foo")?;
-                let value = JsFunction::new(&env, {
-                    move |env, ctx| {
-                        let data = data.clone();
-                        Ok(JsString::new(env, "hi")?)
-                    }
-                })?;
-
-                global_this.set(scope, key.value().inner(), value.value().inner());
-            }
-
-            // utils::v8_eval_print(scope, "globalThis.foo");
-        };
-
-        // utils::v8_trigger_gc(isolate_ptr);
-        {
             let mut scope = env.scope();
-            // utils::v8_eval_print(&mut scope, "globalThis.foo()");
+            {
+                let mut scope = v8::HandleScope::new(&mut scope);
+                let global_this = env.global_this();
+                let global_this = global_this.open(&mut scope);
+
+                let key = v8::String::new(&mut scope, "Hello").unwrap();
+                let value = v8::String::new(&mut scope, "World").unwrap();
+                Reference::register_global_finalizer(
+                    value,
+                    &mut env,
+                    1,
+                    ReferenceOwnership::Rust,
+                    Some(Box::new(|_| println!("Dropped"))),
+                );
+
+                global_this.set(&mut scope, key.into(), value.into());
+            };
+            utils::v8_trigger_gc(isolate_ptr);
+
+            println!("2");
+            {
+                let mut scope = env.scope();
+                utils::v8_eval_print(&mut scope, "globalThis.Hello");
+            };
+            utils::v8_trigger_gc(isolate_ptr);
+
+            {
+                let mut scope = env.scope();
+                utils::v8_eval_print(&mut scope, "delete globalThis.Hello");
+            };
+            utils::v8_trigger_gc(isolate_ptr);
+            println!("3");
             drop(scope);
-            // utils::v8_trigger_gc(isolate_ptr);
+            utils::v8_trigger_gc(isolate_ptr);
+            println!("4");    
         };
-        // utils::v8_trigger_gc(isolate_ptr);
+        utils::v8_trigger_gc(isolate_ptr);
+        println!("5");
+
     }
 
-    // utils::v8_trigger_gc(isolate_ptr);
+    utils::v8_trigger_gc(isolate_ptr);
     Ok(())
 }

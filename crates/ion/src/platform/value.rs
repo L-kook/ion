@@ -1,0 +1,33 @@
+#![allow(non_camel_case_types)]
+use std::{ffi::c_void, ops::Deref};
+
+pub type v8_value = *mut c_void;
+
+#[derive(Debug, Clone)]
+pub struct Value(v8_value);
+
+impl Value {
+    pub fn inner(&self) -> v8::Local<'static, v8::Value> {
+        unsafe { *(self.0 as *mut v8::Local<'static, v8::Value>) }
+    }
+}
+
+impl From<v8::Local<'_, v8::Value>> for Value {
+    fn from(value: v8::Local<'_, v8::Value>) -> Self {
+        Self(Box::into_raw(Box::new(value)) as _)
+    }
+}
+
+impl Into<v8::Local<'static, v8::Value>> for Value {
+    fn into(self) -> v8::Local<'static, v8::Value> {
+        self.inner()
+    }
+}
+
+impl Deref for Value {
+    type Target = v8::Local<'static, v8::Value>;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*(self.0 as *mut v8::Local<'static, v8::Value>) }
+    }
+}

@@ -1,39 +1,58 @@
-use std::ffi::c_void;
-
 use crate::Env;
-use crate::FromJsRaw;
-use crate::ToJsRaw;
+use crate::ToJsUnknown;
+use crate::values::FromJsValue;
+use crate::values::JsObjectValue;
+use crate::values::JsValue;
+use crate::values::ToJsValue;
+use crate::platform::Value;
 
+#[derive(Clone)]
 pub struct JsObject {
-    pub(self) _handle: *mut c_void,
+    pub(crate) value: Value,
+    pub(crate) env: Env,
 }
 
 impl JsObject {
-    // pub fn new(env: &Env) -> crate::Result<Self> {
-    //     let value = v8::Object::new(env.context_scope());
-    //     Ok()
-    // }
-
-    // pub fn set_property<T>(
-    //     &mut self,
-    //     env: &Env,
-    //     key: impl AsRef<str>,
-    //     value: impl FromJsValue<T>,
-    // ) {
-    // }
-}
-
-impl FromJsRaw for JsObject {
-    fn from_js_raw(
-        _env: &Env,
-        _value: v8::Local<'_, v8::Value>,
-    ) -> Self {
-        todo!()
+    pub fn new(env: &Env) -> crate::Result<Self> {
+        let scope = &mut env.scope();
+        let object = v8::Object::new(scope);
+        Ok(Self {
+            value: Value::from(object.cast::<v8::Value>()),
+            env: env.clone(),
+        })
     }
 }
 
-impl ToJsRaw for JsObject {
-    fn into_js_raw(&self) -> v8::Local<'_, v8::Value> {
-        todo!()
+impl JsValue for JsObject {
+    fn value(&self) -> &Value {
+        &self.value
+    }
+
+    fn env(&self) -> &Env {
+        &self.env
+    }
+}
+
+impl ToJsUnknown for JsObject {}
+impl JsObjectValue for JsObject {}
+
+impl FromJsValue for JsObject {
+    fn from_js_value(
+        env: &Env,
+        value: Value,
+    ) -> crate::Result<Self> {
+        Ok(Self {
+            value,
+            env: env.clone(),
+        })
+    }
+}
+
+impl ToJsValue for JsObject {
+    fn to_js_value(
+        _env: &Env,
+        val: Self,
+    ) -> crate::Result<Value> {
+        Ok(val.value.clone())
     }
 }

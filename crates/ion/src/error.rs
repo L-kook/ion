@@ -10,11 +10,14 @@ pub enum Error {
     IsolateNotInitializedError,
     EventLoopNotInitializedError,
     WorkerInitializeError,
-    StringCreateError,
+    ValueCreateError,
+    ValueGetError,
+    ValueCastError,
     ScriptCompileError,
     ScriptRunError,
     ExecError,
     TaskSpawnError,
+    OutOfBounds,
 }
 
 impl std::fmt::Display for Error {

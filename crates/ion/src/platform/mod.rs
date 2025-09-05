@@ -1,18 +1,14 @@
 mod context;
-mod env;
-mod error;
-mod extension;
 mod init;
-mod js_value;
 mod platform;
+mod reference;
 mod runtime;
 mod worker;
+pub mod value;
 
+pub use value::*;
 pub use context::*;
-pub use env::*;
-pub use error::*;
-pub use extension::*;
 pub use init::*;
-pub use js_value::*;
+pub use reference::*;
 pub use runtime::*;
 pub use worker::*;

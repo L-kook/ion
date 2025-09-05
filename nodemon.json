@@ -8,5 +8,5 @@
     "ext": "*",
     "delay": 250,
     "signal": "SIGTERM",
-    "exec": "clear && env cargo run --package ion_scratch -- basic_set_timeout"
+    "exec": "clear && cargo build --release --package ion_scratch && .\\target\\release\\ion_scratch.exe"
 }

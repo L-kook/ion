@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -13,8 +14,8 @@ use crate::Error;
 use crate::JsExtension;
 use crate::utils::channel::oneshot;
 use crate::utils::tokio_ext::LocalRuntimeExt;
+use crate::Env;
 
-use super::Env;
 use super::JsContext;
 
 /// This is a handle to a v8::Isolate running on a dedicated thread.
@@ -47,109 +48,109 @@ impl JsWorker {
                     .build()
                     .unwrap()
                     .local_block_on(async {
-                        // Maintain a store of contexts to help with cleanup on shutdown.
-                        let mut contexts = HashMap::<usize, Env>::new();
+                        //     // Maintain a store of contexts to help with cleanup on shutdown.
+                        //     let mut contexts = HashMap::<usize, Env>::new();
 
-                        // Create an isolate dedicated to this "worker" thread
-                        let mut isolate = v8::Isolate::new(v8::CreateParams::default());
-                        let isolate_ptr = isolate.as_mut() as *mut v8::Isolate;
+                        //     // Create an isolate dedicated to this "worker" thread
+                        //     let mut isolate = v8::Isolate::new(v8::CreateParams::default());
+                        //     let isolate_ptr = isolate.as_mut() as *mut v8::Isolate;
 
-                        while let Ok(event) = rx.recv_async().await {
-                            match event {
-                                JsWorkerEvent::CreateContext(tx_resolve) => {
-                                    let env = Env::new(isolate_ptr);
-                                    let id = env.id();
+                        //     while let Ok(event) = rx.recv_async().await {
+                        //         match event {
+                        //             JsWorkerEvent::CreateContext(tx_resolve) => {
+                        //                 let env = Env::new(isolate_ptr);
+                        //                 let id = env.id();
 
-                                    for extension in &extensions {
-                                        match extension.as_ref() {
-                                            JsExtension::NativeModuleWithBinding {
-                                                module_name: _,
-                                                binding: _,
-                                                hook: _,
-                                            } => todo!(),
-                                            JsExtension::NativeModule {
-                                                module_name: _,
-                                                hook: _,
-                                            } => {
-                                                todo!()
-                                            }
-                                            JsExtension::NativeGlobal { hook: _ } => todo!(),
-                                            JsExtension::GlobalBinding { binding: _ } => todo!(),
-                                        }
-                                    }
+                        //                 for extension in &extensions {
+                        //                     match extension.as_ref() {
+                        //                         JsExtension::NativeModuleWithBinding {
+                        //                             module_name: _,
+                        //                             binding: _,
+                        //                             hook: _,
+                        //                         } => todo!(),
+                        //                         JsExtension::NativeModule {
+                        //                             module_name: _,
+                        //                             hook: _,
+                        //                         } => {
+                        //                             todo!()
+                        //                         }
+                        //                         JsExtension::NativeGlobal { hook: _ } => todo!(),
+                        //                         JsExtension::GlobalBinding { binding: _ } => todo!(),
+                        //                     }
+                        //                 }
 
-                                    contexts.insert(id.clone(), env);
+                        //                 contexts.insert(id.clone(), env);
 
-                                    tx_resolve
-                                        .try_send(Arc::new(JsContext {
-                                            id: id,
-                                            tx: tx.clone(),
-                                        }))
-                                        .unwrap();
-                                }
-                                // This event removes a context and cleans up memory
-                                JsWorkerEvent::ShutdownContext(id, tx_resolve) => {
-                                    let env = contexts.remove(&id).unwrap();
+                        //                 tx_resolve
+                        //                     .try_send(Arc::new(JsContext {
+                        //                         id: id,
+                        //                         tx: tx.clone(),
+                        //                     }))
+                        //                     .unwrap();
+                        //             }
+                        //             // This event removes a context and cleans up memory
+                        //             JsWorkerEvent::ShutdownContext(id, tx_resolve) => {
+                        //                 let env = contexts.remove(&id).unwrap();
 
-                                    // Wait for any remaining & nested async tasks to complete
-                                    // before shutting down the context & isolate
-                                    env.tasks.close();
-                                    env.tasks.wait().await;
+                        //                 // Wait for any remaining & nested async tasks to complete
+                        //                 // before shutting down the context & isolate
+                        //                 env.tasks.close();
+                        //                 env.tasks.wait().await;
 
-                                    // SAFETY: These values are allocated under CreateContext
-                                    unsafe {
-                                        drop(Box::from_raw(
-                                            env.context_scope
-                                                as *mut v8::ContextScope<'_, v8::HandleScope<'_>>,
-                                        ));
-                                        drop(Box::from_raw(
-                                            env.context as *mut v8::Global<v8::Context>,
-                                        ));
-                                        drop(Box::from_raw(
-                                            env.handle_scope as *mut v8::HandleScope<'_, ()>,
-                                        ));
-                                    }
+                        //                 // SAFETY: These values are allocated under CreateContext
+                        //                 unsafe {
+                        //                     drop(Box::from_raw(
+                        //                         env.context_scope
+                        //                             as *mut v8::ContextScope<'_, v8::HandleScope<'_>>,
+                        //                     ));
+                        //                     drop(Box::from_raw(
+                        //                         env.context as *mut v8::Global<v8::Context>,
+                        //                     ));
+                        //                     drop(Box::from_raw(
+                        //                         env.handle_scope as *mut v8::HandleScope<'_, ()>,
+                        //                     ));
+                        //                 }
 
-                                    tx_resolve.try_send(()).unwrap();
-                                }
-                                JsWorkerEvent::Exec(id, callback) => {
-                                    let env = contexts.get_mut(&id).unwrap();
-                                    if let Err(err) = callback(env.clone()) {
-                                        // TODO
-                                        panic!("Callback errored {:?}", err)
-                                    };
-                                }
-                                JsWorkerEvent::Shutdown(tx_resolve) => {
-                                    // TODO consolidate context cleanup, might not be sound if there are
-                                    // references to workers/contexts in multiple threads
-                                    for (_id, env) in contexts {
-                                        // Wait for any remaining & nested async tasks to complete
-                                        // before shutting down the context & isolate
-                                        env.tasks.close();
-                                        env.tasks.wait().await;
+                        //                 tx_resolve.try_send(()).unwrap();
+                        //             }
+                        //             JsWorkerEvent::Exec(id, callback) => {
+                        //                 let env = contexts.get_mut(&id).unwrap();
+                        //                 if let Err(err) = callback(env.clone()) {
+                        //                     // TODO
+                        //                     panic!("Callback errored {:?}", err)
+                        //                 };
+                        //             }
+                        //             JsWorkerEvent::Shutdown(tx_resolve) => {
+                        //                 // TODO consolidate context cleanup, might not be sound if there are
+                        //                 // references to workers/contexts in multiple threads
+                        //                 for (_id, env) in contexts {
+                        //                     // Wait for any remaining & nested async tasks to complete
+                        //                     // before shutting down the context & isolate
+                        //                     env.tasks.close();
+                        //                     env.tasks.wait().await;
 
-                                        // SAFETY: These values are allocated under CreateContext
-                                        unsafe {
-                                            drop(Box::from_raw(
-                                                env.context_scope
-                                                    as *mut v8::ContextScope<
-                                                        '_,
-                                                        v8::HandleScope<'_>,
-                                                    >,
-                                            ));
-                                            drop(Box::from_raw(
-                                                env.context as *mut v8::Global<v8::Context>,
-                                            ));
-                                            drop(Box::from_raw(
-                                                env.handle_scope as *mut v8::HandleScope<'_, ()>,
-                                            ));
-                                        }
-                                    }
-                                    tx_resolve.try_send(()).unwrap();
-                                    break;
-                                }
-                            }
-                        }
+                        //                     // SAFETY: These values are allocated under CreateContext
+                        //                     unsafe {
+                        //                         drop(Box::from_raw(
+                        //                             env.context_scope
+                        //                                 as *mut v8::ContextScope<
+                        //                                     '_,
+                        //                                     v8::HandleScope<'_>,
+                        //                                 >,
+                        //                         ));
+                        //                         drop(Box::from_raw(
+                        //                             env.context as *mut v8::Global<v8::Context>,
+                        //                         ));
+                        //                         drop(Box::from_raw(
+                        //                             env.handle_scope as *mut v8::HandleScope<'_, ()>,
+                        //                         ));
+                        //                     }
+                        //                 }
+                        //                 tx_resolve.try_send(()).unwrap();
+                        //                 break;
+                        //             }
+                        //         }
+                        //     }
                     });
             }
         });

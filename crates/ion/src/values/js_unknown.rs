@@ -1,40 +1,67 @@
-use std::ffi::c_void;
-
 use crate::Env;
+use crate::ToJsUnknown;
+use crate::utils::v8::v8_create_undefined;
+use crate::values::FromJsValue;
+use crate::values::JsValue;
+use crate::values::ToJsValue;
+use crate::platform::Value;
 
-use super::super::FromJsRaw;
-use super::super::ToJsRaw;
-
+#[derive(Clone)]
 pub struct JsUnknown {
-    pub(self) handle: *mut c_void,
+    pub(crate) value: Value,
+    pub(crate) env: Env,
 }
 
-// impl JsUnknown {
-//     fn inner(&self) -> &mut v8::Local<'_, v8::Value> {
-//         unsafe { &mut *(self.handle as *mut v8::Local<'_, v8::Value>) }
-//     }
-// }
+impl JsUnknown {
+    pub unsafe fn cast_unchecked<T: FromJsValue>(self) -> T {
+        T::from_js_value(&self.env, self.value).expect("Failed to cast JsUnknown")
+    }
 
-impl Drop for JsUnknown {
-    fn drop(&mut self) {
-        drop(unsafe { Box::from_raw(self.handle as *mut v8::Local<'_, v8::Value>) })
+    pub fn cast<T: FromJsValue>(self) -> crate::Result<T> {
+        T::from_js_value(&self.env, self.value)
     }
 }
 
-impl FromJsRaw for JsUnknown {
-    fn from_js_raw(
+impl JsValue for JsUnknown {
+    fn value(&self) -> &Value {
+        &self.value
+    }
+
+    fn env(&self) -> &Env {
+        &self.env
+    }
+}
+
+impl ToJsUnknown for JsUnknown {}
+
+impl FromJsValue for JsUnknown {
+    fn from_js_value(
+        env: &Env,
+        value: Value,
+    ) -> crate::Result<Self> {
+        Ok(Self {
+            value,
+            env: env.clone(),
+        })
+    }
+}
+
+impl ToJsValue for JsUnknown {
+    fn to_js_value(
         _env: &Env,
-        value: v8::Local<'_, v8::Value>,
-    ) -> Self {
-        let handle = Box::into_raw(Box::new(value.cast::<v8::Value>()));
-        JsUnknown {
-            handle: handle as _,
-        }
+        val: Self,
+    ) -> crate::Result<Value> {
+        Ok(val.value.clone())
     }
 }
 
-impl ToJsRaw for JsUnknown {
-    fn into_js_raw(&self) -> v8::Local<'_, v8::Value> {
-        unsafe { *(self.handle as *mut v8::Local<'_, v8::Value>) }
+impl ToJsValue for () {
+    fn to_js_value(
+        env: &Env,
+        _val: Self,
+    ) -> crate::Result<Value> {
+        let scope = &mut env.scope();
+        let local = v8_create_undefined(scope)?;
+        Ok(Value::from(local))
     }
 }

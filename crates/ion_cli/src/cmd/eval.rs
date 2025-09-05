@@ -7,19 +7,19 @@ pub struct EvalCommand {
 }
 
 pub fn main(command: EvalCommand) -> anyhow::Result<()> {
-    let runtime = ion::platform::initialize_once()?;
+    // let runtime = ion::platform::initialize_once()?;
 
-    let worker = runtime.spawn_worker()?;
-    let ctx = worker.create_context()?;
+    // let worker = runtime.spawn_worker()?;
+    // let ctx = worker.create_context()?;
 
-    ctx.exec_blocking(|env| {
-        ion::exts::define_console(&env);
-        ion::exts::define_set_timeout(&env);
-        ion::exts::define_set_interval(&env);
+    // ctx.exec_blocking(|env| {
+    //     ion::exts::define_console(&env);
+    //     ion::exts::define_set_timeout(&env);
+    //     ion::exts::define_set_interval(&env);
 
-        env.eval_script(command.code)?;
-        Ok(())
-    })?;
+    //     env.eval_script(command.code)?;
+    //     Ok(())
+    // })?;
 
     Ok(())
 }

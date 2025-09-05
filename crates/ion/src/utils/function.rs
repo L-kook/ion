@@ -1,5 +1,3 @@
-// TODO: Replace with JsFunction type
-
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -28,6 +26,7 @@ fn cache_remove(key: *mut std::ffi::c_void) -> bool {
 type DynV8Callback =
     Box<dyn 'static + Fn(&mut v8::HandleScope, v8::FunctionCallbackArguments, v8::ReturnValue)>;
 
+/// Create a JavaScript function that drops the held values when the Function is cleaned up by V8 GC
 pub fn v8_create_function_from_closure<'a>(
     scope: &mut v8::HandleScope<'a>,
     closure: impl 'static + Fn(&mut v8::HandleScope, v8::FunctionCallbackArguments, v8::ReturnValue),

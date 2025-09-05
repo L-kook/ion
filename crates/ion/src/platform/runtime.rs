@@ -5,8 +5,8 @@ use flume::bounded;
 
 use crate::JsExtension;
 use crate::utils::channel::oneshot;
+use crate::Error;
 
-use super::Error;
 use super::JsWorker;
 use super::platform::PlatformEvent;
 
@@ -19,7 +19,7 @@ pub struct JsRuntime {
 
 impl JsRuntime {
     /// Spawns a dedicated worker thread for isolates
-    pub fn spawn_worker(&self) -> super::Result<Arc<JsWorker>> {
+    pub fn spawn_worker(&self) -> crate::Result<Arc<JsWorker>> {
         let (tx, rx) = bounded(1);
 
         if self.tx.send(PlatformEvent::SpawnWorker(tx)).is_err() {

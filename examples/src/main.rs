@@ -1,3 +1,4 @@
+#![allow(warnings)]
 mod basic;
 mod basic_async;
 mod basic_set_timeout;

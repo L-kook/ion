@@ -2,10 +2,10 @@ use flume::Sender;
 use flume::bounded;
 
 use crate::Error;
-use crate::JsWorkerEvent;
 use crate::utils::channel::oneshot;
+use crate::Env;
 
-use super::Env;
+use super::JsWorkerEvent;
 
 /// This is a handle to a v8::Context
 #[derive(Debug, Clone)]
