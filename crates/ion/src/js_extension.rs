@@ -1,7 +1,8 @@
 use crate::Env;
+use crate::JsObject;
 
 pub type ExtensionHook =
-    Box<dyn 'static + Sync + Send + Fn(&Env, &mut v8::Local<'_, v8::Object>) -> crate::Result<()>>;
+    Box<dyn 'static + Sync + Send + Fn(&Env, &mut JsObject) -> crate::Result<()>>;
 
 pub enum JsExtension {
     /// Extension available as a module that has both native code and an associated JavaScript glue code binding

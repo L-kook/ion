@@ -66,3 +66,12 @@ impl ToJsValue for JsString {
         Ok(val.value.clone())
     }
 }
+
+impl Env {
+    pub fn create_string(
+        &self,
+        value: impl AsRef<str>,
+    ) -> crate::Result<JsString> {
+        JsString::new(self, value)
+    }
+}
