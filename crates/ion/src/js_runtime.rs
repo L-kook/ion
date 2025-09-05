@@ -23,21 +23,21 @@ pub struct JsRuntime {
 impl JsRuntime {
     /// Initialize the v8 runtime, this can only be done once per process.
     /// Subsequent calls will return the first instance of [`JsRuntime`]
-    pub fn initialize_once_with_args(args: &[&str]) -> crate::Result<JsRuntime> {
+    pub fn initialize_once_with_args(args: &[&str]) -> crate::Result<Arc<JsRuntime>> {
         let args = args.iter().map(|v| v.to_string()).collect::<Vec<String>>();
 
         if PLATFORM.send(PlatformEvent::Init { args }).is_err() {
             return Err(crate::Error::PlatformInitializeError);
         };
 
-        Ok(JsRuntime {
+        Ok(Arc::new(JsRuntime {
             tx: PLATFORM.clone(),
-        })
+        }))
     }
 
     /// Initialize the v8 runtime, this can only be done once per process.
     /// Subsequent calls will return the first instance of [`JsRuntime`]
-    pub fn initialize_once() -> crate::Result<JsRuntime> {
+    pub fn initialize_once() -> crate::Result<Arc<JsRuntime>> {
         Self::initialize_once_with_args(&[])
     }
 

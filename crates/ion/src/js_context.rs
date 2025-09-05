@@ -3,6 +3,7 @@ use flume::bounded;
 
 use crate::Env;
 use crate::Error;
+use crate::JsUnknown;
 use crate::platform::worker::JsWorkerEvent;
 use crate::utils::channel::oneshot;
 
@@ -61,6 +62,19 @@ impl JsContext {
             return Err(Error::ExecError);
         };
         Ok(())
+    }
+
+    pub fn eval_script(
+        &self,
+        code: impl AsRef<str>,
+    ) -> crate::Result<()> {
+        let code = code.as_ref().to_string();
+        self.exec_blocking(move |env| {
+            if let Err(err) = env.eval_script::<JsUnknown>(code) {
+                return Err(err);
+            }
+            Ok(())
+        })
     }
 }
 
