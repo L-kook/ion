@@ -1,4 +1,5 @@
 use std::ffi::c_void;
+use std::path::Path;
 
 use tokio_util::task::TaskTracker;
 
@@ -7,25 +8,25 @@ use crate::platform::Value;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Env {
-    isolate_ptr: *mut v8::Isolate,
-    context: *mut v8::Local<'static, v8::Context>,
-    global_this: *mut c_void, // v8::Global<v8::Object>,
-    async_tasks: *mut TaskTracker,
-    inner: *mut Env,
+    pub(crate) isolate_ptr: *mut v8::Isolate,
+    pub(crate) context: *mut v8::Local<'static, v8::Context>,
+    pub(crate) global_this: *mut c_void, // v8::Global<v8::Object>,
+    pub(crate) async_tasks: *mut TaskTracker,
+    pub(crate) inner: *mut Env,
 }
 
 impl Env {
     pub fn new(
-        mut isolate_ptr: impl AsMut<v8::Isolate>,
-        mut context: impl AsMut<v8::Local<'static, v8::Context>>,
-        mut global_this: impl AsMut<v8::Global<v8::Object>>,
-        mut async_tasks: impl AsMut<TaskTracker>,
+        isolate_ptr: *mut v8::Isolate,
+        context: *mut v8::Local<'static, v8::Context>,
+        global_this: *mut v8::Global<v8::Object>,
+        async_tasks: *mut TaskTracker,
     ) -> Box<Self> {
         let mut env = Box::new(Env {
-            isolate_ptr: isolate_ptr.as_mut() as _,
-            context: context.as_mut() as _,
-            global_this: global_this.as_mut() as *mut v8::Global<v8::Object> as _,
-            async_tasks: async_tasks.as_mut() as _,
+            isolate_ptr: isolate_ptr,
+            context,
+            global_this: global_this as _,
+            async_tasks: async_tasks,
             inner: std::ptr::null_mut(),
         });
 
@@ -42,7 +43,6 @@ impl Env {
     }
 
     pub fn async_tasks(&self) -> &TaskTracker {
-        // SAFETY: Lifetime of `Isolate` is longer than `Env`.
         unsafe { &mut *self.async_tasks }
     }
 
@@ -100,13 +100,23 @@ impl Env {
         let Some(code) = v8::String::new(scope, code.as_ref()) else {
             panic!();
         };
+
         let Some(script) = v8::Script::compile(scope, code, None) else {
             panic!();
         };
+
         let Some(value) = script.run(scope) else {
             panic!();
         };
 
         Return::from_js_value(self, Value::from(value))
+    }
+
+    /// Load a file and evaluate it
+    pub fn import(
+        &self,
+        _path: impl AsRef<Path>,
+    ) -> crate::Result<()> {
+        todo!()
     }
 }

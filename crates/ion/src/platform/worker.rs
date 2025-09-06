@@ -1,5 +1,6 @@
 #![allow(warnings)]
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
@@ -10,18 +11,31 @@ use flume::Receiver;
 use flume::Sender;
 use flume::bounded;
 use flume::unbounded;
+use tokio_util::task::TaskTracker;
 
 use crate::Env;
 use crate::Error;
 use crate::JsExtension;
+use crate::platform::JsRealm;
+use crate::utils::HashMapExt;
 use crate::utils::channel::oneshot;
 use crate::utils::tokio_ext::LocalRuntimeExt;
 
 pub(crate) enum JsWorkerEvent {
-    CreateContext(Sender<(usize, Sender<JsWorkerEvent>)>),
-    ShutdownContext(usize, Sender<()>),
-    Exec(usize, Box<dyn Send + FnOnce(Env) -> crate::Result<()>>),
-    Shutdown(Sender<()>),
+    CreateContext {
+        resolve: Sender<(usize, Sender<JsWorkerEvent>)>,
+    },
+    ShutdownContext {
+        id: usize,
+        resolve: Sender<()>,
+    },
+    Exec {
+        id: usize,
+        callback: Box<dyn Send + FnOnce(&Env) -> crate::Result<()>>,
+    },
+    Shutdown {
+        resolve: Sender<()>,
+    },
 }
 
 // Create a dedicated thread to host the isolate
@@ -45,9 +59,9 @@ pub(crate) fn start_js_worker_thread() -> (Sender<JsWorkerEvent>, Mutex<Option<J
 async fn worker_thread_async(
     tx: Sender<JsWorkerEvent>,
     rx: Receiver<JsWorkerEvent>,
-) {
+) -> crate::Result<()> {
     // Maintain a store of contexts to help with cleanup on shutdown.
-    let mut contexts = HashMap::<usize, Env>::new();
+    let mut realms = HashMap::<usize, Box<JsRealm>>::new();
 
     // Create an isolate dedicated to this "worker" thread
     let mut isolate = v8::Isolate::new(v8::CreateParams::default());
@@ -55,10 +69,34 @@ async fn worker_thread_async(
 
     while let Ok(event) = rx.recv_async().await {
         match event {
-            JsWorkerEvent::CreateContext(sender) => todo!(),
-            JsWorkerEvent::ShutdownContext(_, sender) => todo!(),
-            JsWorkerEvent::Exec(_, fn_once) => todo!(),
-            JsWorkerEvent::Shutdown(sender) => todo!(),
+            JsWorkerEvent::CreateContext { resolve } => {
+                let realm = JsRealm::new(isolate_ptr);
+                let realm_id = realm.id();
+
+                realms.insert(realm_id.clone(), realm);
+                resolve.try_send((realm_id, tx.clone()))?;
+            }
+            JsWorkerEvent::ShutdownContext { id, resolve } => {
+                let realm = realms.try_remove(&id)?;
+                realm.drain_async_tasks().await;
+                resolve.try_send(())?;
+            }
+            JsWorkerEvent::Exec { id, callback } => {
+                let realm = realms.try_get(&id)?;
+                if let Err(err) = callback(&realm.env()) {
+                    // TODO global error handler
+                    panic!("Callback errored {:?}", err)
+                };
+            }
+            JsWorkerEvent::Shutdown { resolve } => {
+                for (_id, realm) in realms {
+                    realm.drain_async_tasks().await;
+                }
+                resolve.try_send(())?;
+                break;
+            }
         }
     }
+
+    Ok(())
 }

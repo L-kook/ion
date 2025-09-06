@@ -13,13 +13,13 @@ use ion::*;
 use tokio_util::task::TaskTracker;
 
 pub fn main() -> anyhow::Result<()> {
-    let platform = v8::new_default_platform(0, false).make_shared();
+    // let platform = v8::new_default_platform(0, false).make_shared();
 
-    v8::V8::set_flags_from_string(
-        "--no_freeze_flags_after_init --expose_gc --harmony-shadow-realm --allow_natives_syntax --turbo_fast_api_calls --js-source-phase-imports",
-    );
-    v8::V8::initialize_platform(platform);
-    v8::V8::initialize();
+    // v8::V8::set_flags_from_string(
+    //     "--no_freeze_flags_after_init --expose_gc --harmony-shadow-realm --allow_natives_syntax --turbo_fast_api_calls --js-source-phase-imports",
+    // );
+    // v8::V8::initialize_platform(platform);
+    // v8::V8::initialize();
 
     utils::bench(|| main_async())?;
     // local_thread_runtime(main_async())??;
@@ -30,71 +30,26 @@ pub fn main() -> anyhow::Result<()> {
 
 // async fn main_async() -> anyhow::Result<()> {
 fn main_async() -> anyhow::Result<()> {
-    // Spawn v8 Isolate
+    let runtime = JsRuntime::initialize_once()?;
 
-    let mut isolate = v8::Isolate::new(v8::CreateParams::default());
-    let isolate_ptr = isolate.as_mut() as *mut v8::Isolate;
-    // let mut states = RuntimeStateMap::default();
+    // Create an isolate running on a dedicated thread
+    let worker = runtime.spawn_worker()?;
 
-    {
-        // Initial setup
-        let handle_scope = &mut v8::HandleScope::new(unsafe { &mut *isolate_ptr });
+    // // Open a JavaScript context on the isolate thread to execute JavaScript on
+    // // You can open multiple contexts, sharing the same thread
+    let ctx = worker.create_context()?;
 
-        let mut context = Box::new(v8::Context::new(handle_scope, Default::default()));
+    // Execute some JavaScript in the context
+    ctx.exec_blocking(|env| {
+        // Evaluate arbitrary JavaScript, the result of the last line is returned
+        let value = env.eval_script::<JsNumber>("1 + 1")?;
 
-        // let context_global = v8::Global::new(handle_scope, *context);
+        // Cast to Rust type
+        let result = value.get_u32()?;
 
-        let mut global_this = Box::new(v8::Global::new(
-            unsafe { &mut *isolate_ptr },
-            context.global(handle_scope),
-        ));
+        // println!("Returned: {}", result);
+        Ok(())
+    })?;
 
-        let _context_scope = v8::ContextScope::new(handle_scope, *context);
-        let mut async_tasks = Box::new(TaskTracker::new());
-
-        let env = Env::new(
-            &mut isolate,
-            &mut context,
-            &mut global_this,
-            &mut async_tasks,
-        );
-
-        {
-            let scope = &mut env.scope();
-            {
-                let mut data = vec![];
-                for i in 0..10000 {
-                    data.push(i as usize)
-                }
-                let data = Rc::new(data);
-                let scope = &mut v8::HandleScope::new(scope);
-                let global_this = env.global_this();
-                let global_this = global_this.open(scope);
-
-                let key = JsString::new(&env, "foo")?;
-                let value = JsFunction::new(&env, {
-                    move |env, ctx| {
-                        let data = data.clone();
-                        Ok(JsString::new(env, "hi")?)
-                    }
-                })?;
-
-                global_this.set(scope, key.value().inner(), value.value().inner());
-            }
-
-            // utils::v8_eval_print(scope, "globalThis.foo");
-        };
-
-        // utils::v8_trigger_gc(isolate_ptr);
-        {
-            let mut scope = env.scope();
-            // utils::v8_eval_print(&mut scope, "globalThis.foo()");
-            drop(scope);
-            // utils::v8_trigger_gc(isolate_ptr);
-        };
-        // utils::v8_trigger_gc(isolate_ptr);
-    }
-
-    // utils::v8_trigger_gc(isolate_ptr);
     Ok(())
 }

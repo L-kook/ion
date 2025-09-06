@@ -1,4 +1,5 @@
 mod common;
+mod js_differed;
 mod js_external;
 mod js_function;
 mod js_number;
@@ -7,6 +8,7 @@ mod js_string;
 mod js_unknown;
 
 pub use common::*;
+pub use js_differed::*;
 pub use js_external::*;
 pub use js_function::*;
 pub use js_number::*;

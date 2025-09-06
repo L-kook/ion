@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use flume::Sender;
 use flume::bounded;
 
@@ -17,11 +19,14 @@ pub struct JsContext {
 impl JsContext {
     pub fn exec(
         &self,
-        callback: impl 'static + Send + FnOnce(Env) -> crate::Result<()>,
+        callback: impl 'static + Send + FnOnce(&Env) -> crate::Result<()>,
     ) -> crate::Result<()> {
         if self
             .tx
-            .try_send(JsWorkerEvent::Exec(self.id, Box::new(callback)))
+            .try_send(JsWorkerEvent::Exec {
+                id: self.id,
+                callback: Box::new(callback),
+            })
             .is_err()
         {
             return Err(Error::ExecError);
@@ -31,7 +36,7 @@ impl JsContext {
 
     pub async fn exec_async(
         &self,
-        callback: impl 'static + Send + FnOnce(Env) -> crate::Result<()>,
+        callback: impl 'static + Send + FnOnce(&Env) -> crate::Result<()>,
     ) -> crate::Result<()> {
         let (tx, rx) = bounded(1);
 
@@ -49,7 +54,7 @@ impl JsContext {
 
     pub fn exec_blocking(
         &self,
-        callback: impl 'static + Send + FnOnce(Env) -> crate::Result<()>,
+        callback: impl 'static + Send + FnOnce(&Env) -> crate::Result<()>,
     ) -> crate::Result<()> {
         let (tx, rx) = bounded(1);
 
@@ -66,7 +71,7 @@ impl JsContext {
 
     /// Evaluate script, ignoring return value. If you need the return value
     /// use a variant of [`JsContext::exec`] then run [`Env::eval_script`]
-    pub fn eval_script(
+    pub fn eval(
         &self,
         code: impl AsRef<str>,
     ) -> crate::Result<()> {
@@ -78,6 +83,14 @@ impl JsContext {
             Ok(())
         })
     }
+
+    /// Load a file and evaluate it
+    pub fn import(
+        &self,
+        _path: impl AsRef<Path>,
+    ) -> crate::Result<()> {
+        todo!()
+    }
 }
 
 impl Drop for JsContext {
@@ -86,14 +99,17 @@ impl Drop for JsContext {
 
         if self
             .tx
-            .send(JsWorkerEvent::ShutdownContext(self.id, tx))
+            .send(JsWorkerEvent::ShutdownContext {
+                id: self.id,
+                resolve: tx,
+            })
             .is_err()
         {
-            panic!("Cannot drop JsContext")
+            panic!("Cannot drop JsContext 1")
         };
 
         if rx.recv().is_err() {
-            panic!("Cannot drop JsContext")
+            panic!("Cannot drop JsContext 2")
         }
     }
 }

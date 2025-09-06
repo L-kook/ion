@@ -41,7 +41,11 @@ impl JsWorker {
     pub fn create_context(&self) -> crate::Result<Arc<JsContext>> {
         let (tx, rx) = bounded(1);
 
-        if self.tx.send(JsWorkerEvent::CreateContext(tx)).is_err() {
+        if self
+            .tx
+            .send(JsWorkerEvent::CreateContext { resolve: tx })
+            .is_err()
+        {
             return Err(Error::WorkerInitializeError);
         };
 
@@ -57,16 +61,23 @@ impl Drop for JsWorker {
     fn drop(&mut self) {
         let (tx, rx) = oneshot();
 
-        if self.tx.send(JsWorkerEvent::Shutdown(tx)).is_err() {
-            panic!("Cannot drop JsWorker")
+        if self
+            .tx
+            .send(JsWorkerEvent::Shutdown { resolve: tx })
+            .is_err()
+        {
+            panic!("Cannot drop JsWorker 1");
+            return;
         };
 
         if rx.recv().is_err() {
-            panic!("Cannot drop JsWorker")
+            panic!("Cannot drop JsWorker 2");
+            return;
         }
 
         let Ok(mut handle) = self.handle.lock() else {
-            panic!("Cannot drop JsWorker")
+            panic!("Cannot drop JsWorker 3");
+            return;
         };
 
         if let Some(handle) = handle.take() {

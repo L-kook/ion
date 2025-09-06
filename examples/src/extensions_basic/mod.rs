@@ -13,7 +13,7 @@ pub fn main() -> anyhow::Result<()> {
             }
         "#
         .to_string(),
-        hook: Box::new(|env, exports| {
+        extension: Box::new(|env, exports| {
             let key = env.create_string("foo")?;
             let value = env.create_string("bar")?;
             exports.set_property(key, value)?;

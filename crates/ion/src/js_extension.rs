@@ -9,12 +9,12 @@ pub enum JsExtension {
     NativeModuleWithBinding {
         module_name: String,
         binding: String,
-        hook: ExtensionHook,
+        extension: ExtensionHook,
     },
     /// Extension available as a module that is written in native code
     NativeModule {
         module_name: String,
-        hook: ExtensionHook,
+        extension: ExtensionHook,
     },
     /// Extension that runs native code when a JsContext is started, used to mutate globalThis
     NativeGlobal { hook: ExtensionHook },
@@ -31,11 +31,11 @@ impl std::fmt::Debug for JsExtension {
             JsExtension::NativeModuleWithBinding {
                 module_name,
                 binding: _,
-                hook: _,
+                extension: _,
             } => write!(f, "NativeModuleWithBinding({})", module_name),
             JsExtension::NativeModule {
                 module_name,
-                hook: _,
+                extension: _,
             } => {
                 write!(f, "NativeModule({})", module_name)
             }

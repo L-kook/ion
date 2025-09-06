@@ -1,9 +1,17 @@
 #![allow(unused)]
 
 pub fn bench(callback: impl 'static + Fn() -> anyhow::Result<()>) -> anyhow::Result<()> {
+    println!("Bench");
+    std::thread::sleep(std::time::Duration::from_secs(3));
+
+    println!("Running once");
+    callback()?;
+    std::thread::sleep(std::time::Duration::from_secs(3));
+
+    println!("Looping");
     for i in 0..50 {
         println!("loop {}", i);
-        for _ in 0..1000 {
+        for _ in 0..10000 {
             callback()?;
         }
     }
