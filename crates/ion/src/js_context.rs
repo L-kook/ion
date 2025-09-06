@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use flume::Sender;
 use flume::bounded;
 
@@ -87,9 +85,21 @@ impl JsContext {
     /// Load a file and evaluate it
     pub fn import(
         &self,
-        _path: impl AsRef<Path>,
+        path: impl AsRef<str>,
     ) -> crate::Result<()> {
-        todo!()
+        let (tx, rx) = bounded(1);
+
+        self.tx.try_send(JsWorkerEvent::Import {
+            id: self.id.clone(),
+            specifier: path.as_ref().to_string(),
+            resolve: tx,
+        })?;
+
+        if rx.recv().is_err() {
+            return Err(Error::ExecError);
+        };
+
+        Ok(())
     }
 }
 

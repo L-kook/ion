@@ -1,6 +1,7 @@
 #![allow(warnings)]
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
@@ -13,11 +14,19 @@ use flume::bounded;
 use flume::unbounded;
 use tokio_util::task::TaskTracker;
 
+use crate::DynResolver;
 use crate::Env;
 use crate::Error;
 use crate::JsExtension;
+use crate::ResolverContext;
+use crate::fs::FileSystem;
 use crate::platform::JsRealm;
+use crate::platform::background_worker::BackgroundWorkerEvent;
+use crate::platform::module::ModuleMap;
+use crate::platform::module::run_module;
+use crate::platform::resolve::run_resolvers;
 use crate::utils::HashMapExt;
+use crate::utils::PathExt;
 use crate::utils::channel::oneshot;
 use crate::utils::tokio_ext::LocalRuntimeExt;
 
@@ -33,13 +42,22 @@ pub(crate) enum JsWorkerEvent {
         id: usize,
         callback: Box<dyn Send + FnOnce(&Env) -> crate::Result<()>>,
     },
+    Import {
+        id: usize,
+        specifier: String,
+        resolve: Sender<()>,
+    },
     Shutdown {
         resolve: Sender<()>,
     },
 }
 
 // Create a dedicated thread to host the isolate
-pub(crate) fn start_js_worker_thread() -> (Sender<JsWorkerEvent>, Mutex<Option<JoinHandle<()>>>) {
+pub(crate) fn start_js_worker_thread(
+    tx_background: Sender<BackgroundWorkerEvent>,
+    extensions: Vec<Arc<JsExtension>>,
+    resolvers: Vec<DynResolver>,
+) -> (Sender<JsWorkerEvent>, Mutex<Option<JoinHandle<()>>>) {
     let (tx, rx) = unbounded::<JsWorkerEvent>();
 
     let handle = thread::spawn({
@@ -49,7 +67,13 @@ pub(crate) fn start_js_worker_thread() -> (Sender<JsWorkerEvent>, Mutex<Option<J
                 .enable_all()
                 .build()
                 .unwrap()
-                .local_block_on(worker_thread_async(tx, rx));
+                .local_block_on(worker_thread_async(
+                    tx,
+                    rx,
+                    tx_background,
+                    extensions,
+                    resolvers,
+                ));
         }
     });
 
@@ -59,9 +83,13 @@ pub(crate) fn start_js_worker_thread() -> (Sender<JsWorkerEvent>, Mutex<Option<J
 async fn worker_thread_async(
     tx: Sender<JsWorkerEvent>,
     rx: Receiver<JsWorkerEvent>,
+    tx_background: Sender<BackgroundWorkerEvent>,
+    extensions: Vec<Arc<JsExtension>>,
+    resolvers: Vec<DynResolver>,
 ) -> crate::Result<()> {
     // Maintain a store of contexts to help with cleanup on shutdown.
     let mut realms = HashMap::<usize, Box<JsRealm>>::new();
+    let fs = FileSystem::Physical;
 
     // Create an isolate dedicated to this "worker" thread
     let mut isolate = v8::Isolate::new(v8::CreateParams::default());
@@ -70,7 +98,12 @@ async fn worker_thread_async(
     while let Ok(event) = rx.recv_async().await {
         match event {
             JsWorkerEvent::CreateContext { resolve } => {
-                let realm = JsRealm::new(isolate_ptr);
+                let realm = JsRealm::new(
+                    isolate_ptr,
+                    fs.clone(),
+                    resolvers.clone(),
+                    tx_background.clone(),
+                );
                 let realm_id = realm.id();
 
                 realms.insert(realm_id.clone(), realm);
@@ -87,6 +120,29 @@ async fn worker_thread_async(
                     // TODO global error handler
                     panic!("Callback errored {:?}", err)
                 };
+            }
+            JsWorkerEvent::Import {
+                id,
+                specifier,
+                resolve,
+            } => {
+                let result = run_resolvers(
+                    &resolvers,
+                    ResolverContext {
+                        fs: fs.clone(),
+                        specifier: specifier.clone(),
+                        from: std::env::current_dir().unwrap(),
+                    },
+                )
+                .await?;
+
+                run_module(
+                    realms.try_get(&id)?,
+                    result.path.try_to_string()?,
+                    String::from_utf8(result.code)?,
+                );
+
+                let result = resolve.try_send(())?;
             }
             JsWorkerEvent::Shutdown { resolve } => {
                 for (_id, realm) in realms {

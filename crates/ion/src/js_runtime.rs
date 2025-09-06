@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 use std::sync::atomic::Ordering;
 
+use async_fn_traits::AsyncFn1;
 use flume::Sender;
 use flume::bounded;
 
@@ -109,11 +110,22 @@ impl JsRuntime {
 
     /// Hook that runs before code is imported. This can be used to
     /// customize the behavior of "import" statements
-    pub fn register_resolver(
+    pub fn register_resolver<Func, Fut>(
         &self,
-        _resolver: impl Fn(ResolverContext) -> crate::Result<ResolverResult>,
-    ) {
-        println!("Resolvers not implemented yet")
+        resolver: Func,
+    ) -> crate::Result<()>
+    where
+        Func: 'static + Sync + Send + AsyncFn1<ResolverContext, OutputFuture = Fut>,
+        Fut: Sync + Send + Future<Output = crate::Result<Option<ResolverResult>>> + 'static,
+    {
+        let (tx, rx) = oneshot();
+
+        self.tx.try_send(PlatformEvent::RegisterResolver {
+            resolver: Arc::new(move |ctx| Box::pin(resolver(ctx))),
+            resolve: tx,
+        })?;
+
+        rx.recv()?
     }
 }
 

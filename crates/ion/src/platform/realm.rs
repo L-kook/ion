@@ -1,11 +1,21 @@
+use flume::Sender;
 use tokio_util::task::TaskTracker;
 
+use crate::DynResolver;
 use crate::Env;
+use crate::fs::FileSystem;
+use crate::platform::background_worker::BackgroundWorkerEvent;
+use crate::platform::module::ModuleMap;
+use crate::utils::channel::oneshot;
 
 // Container that constructs a V8 context and preserves the internals until dropped
 pub struct JsRealm {
+    pub(crate) resolvers: Vec<DynResolver>,
+    pub(crate) fs: FileSystem,
+    pub(crate) background: Sender<BackgroundWorkerEvent>,
     id: usize,
     env: Box<Env>,
+    modules: *mut ModuleMap,
     context: *mut v8::Local<'static, v8::Context>,
     global_this: *mut std::ffi::c_void, // v8::Global<v8::Object>,
     async_tasks: *mut TaskTracker,
@@ -14,7 +24,12 @@ pub struct JsRealm {
 }
 
 impl JsRealm {
-    pub fn new(isolate_ptr: *mut v8::Isolate) -> Box<Self> {
+    pub(crate) fn new(
+        isolate_ptr: *mut v8::Isolate,
+        fs: FileSystem,
+        resolvers: Vec<DynResolver>,
+        background: Sender<BackgroundWorkerEvent>,
+    ) -> Box<Self> {
         let handle_scope = Box::new(v8::HandleScope::new(unsafe { &mut *isolate_ptr }));
         let handle_scope_ptr = Box::into_raw(handle_scope);
         let handle_scope = unsafe { &mut *handle_scope_ptr };
@@ -37,9 +52,15 @@ impl JsRealm {
 
         let env = Env::new(isolate_ptr, context_ptr, global_this_ptr, async_tasks_ptr);
 
+        let modules = Box::into_raw(Box::new(ModuleMap::default()));
+
         let mut realm = Box::new(JsRealm {
             id: 0,
             env,
+            fs,
+            background,
+            modules,
+            resolvers,
             context: context_ptr,
             global_this: global_this_ptr as _,
             async_tasks: async_tasks_ptr,
@@ -49,6 +70,15 @@ impl JsRealm {
 
         let realm_ptr = realm.as_mut() as *mut JsRealm;
         let realm_id = realm_ptr as usize;
+
+        {
+            // TODO use slot or data
+            let scope = unsafe { &mut *context_scope_ptr };
+            let key = v8::String::new(scope, "__data").unwrap();
+            let value = v8::External::new(scope, realm_ptr as _);
+            let global_this = context.global(scope);
+            global_this.set(scope, key.into(), value.into());
+        }
 
         realm.id = realm_id;
 
@@ -71,6 +101,41 @@ impl JsRealm {
     pub fn env(&self) -> &Box<Env> {
         &self.env
     }
+
+    pub fn async_background<'a, Return: 'static + Send + Sync>(
+        &self,
+        fut: impl 'static + Send + Sync + Future<Output = crate::Result<Return>>,
+    ) -> crate::Result<Return> {
+        let (tx, rx) = oneshot();
+        self.background
+            .try_send(BackgroundWorkerEvent::ExecFut(Box::pin(async move {
+                tx.try_send(fut.await).unwrap();
+                Ok(())
+            })))?;
+        rx.recv()?
+    }
+
+    pub fn async_background_task<'a>(
+        &self,
+        fut: impl 'static + Send + Sync + Future<Output = crate::Result<()>>,
+    ) -> crate::Result<()> {
+        Ok(self
+            .background
+            .try_send(BackgroundWorkerEvent::ExecFut(Box::pin(fut)))?)
+    }
+
+    pub(crate) fn module_map<'a>(&self) -> &mut ModuleMap {
+        unsafe { &mut *self.modules }
+    }
+
+    pub(crate) fn v8_revive<'a>(scope: &mut v8::HandleScope<'_>) -> &'a mut JsRealm {
+        let context = scope.get_current_context();
+        let global_this = context.global(scope);
+        let data_key = v8::String::new(scope, "__data").unwrap();
+        let data = global_this.get(scope, data_key.into()).unwrap();
+        let data = data.cast::<v8::External>();
+        unsafe { &mut *(data.value() as *mut JsRealm) }
+    }
 }
 
 impl Drop for JsRealm {
@@ -80,5 +145,6 @@ impl Drop for JsRealm {
         drop(unsafe { Box::from_raw(self.context) });
         drop(unsafe { Box::from_raw(self.handle_scope) });
         drop(unsafe { Box::from_raw(self.async_tasks) });
+        drop(unsafe { Box::from_raw(self.modules) });
     }
 }

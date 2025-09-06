@@ -1,6 +1,7 @@
 mod env;
 mod error;
 pub mod extensions;
+pub mod fs;
 mod js_context;
 mod js_extension;
 mod js_preprocessor;

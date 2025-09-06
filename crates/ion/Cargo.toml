@@ -14,3 +14,6 @@ futures.workspace = true
 v8.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tokio-util = { workspace = true, features = ["rt"] }
+normalize-path.workspace = true
+async_fn_traits = "0.1.1"
+num_cpus.workspace = true

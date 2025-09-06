@@ -17,7 +17,10 @@ pub fn main() -> anyhow::Result<()> {
 }
 
 async fn main_async() -> anyhow::Result<()> {
-    // Spawn v8 Isolate
+    
+
+
+    Spawn v8 Isolate
     let mut isolate = v8::Isolate::new(v8::CreateParams::default());
 
     {
