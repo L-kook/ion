@@ -1,96 +1,93 @@
-# Ion
+# Ion.js ⚡
 
-## JavaScript Runtime for Rust
+## JavaScript Runtime for Rust Embedders
 
 Goals:
-- High level API for v8
-  - Inspired by napi-rs
-- C bindings for v8
-  - Inspired by Nodejs n-api
+- ✅ Easy to use high-level API (Inspired by napi-rs)
+- ✅ Event-loop built on top of Tokio
+- ✅ Simple API to add a standard library
+- ✅ Positively multi-threaded
+- 👀 C FFI for embedders 
+
+*Note: There is still much to do, but this is starting point!*
 
 ## CLI Usage
 
+The repo includes a reference executable that implements Ion, you can find it under [./crates/ion_cli](./crates/ion_cli)
+
 ```bash
-just build
-./target/linux-amd64/ion eval "console.log('42')"
+cargo build --release
+./target/release/ion_cli eval "console.log('42')"
 ```
 
 ## Embedder Usage
 
 ### Basic
 
-See (./examples)[./examples]
+For more, see [./examples](./examples)
 
 ```rust
+use ion::*;
+
 pub fn main() -> anyhow::Result<()> {
-    // Start the runtime
-    let runtime = ion::platform::initialize_once()?;
+    let runtime = JsRuntime::initialize_debug()?;
 
     // Create an isolate running on a dedicated thread
     let worker = runtime.spawn_worker()?;
 
-    // Open a JavaScript context on the isolate thread to execute JavaScript on
-    // You can open multiple contexts, sharing the same thread
-    {
-        let ctx = worker.create_context()?;
+    // // Open a JavaScript context on the isolate thread to execute JavaScript on
+    // // You can open multiple contexts, sharing the same thread
+    let ctx = worker.create_context()?;
 
-        // Execute some JavaScript in the context
-        ctx.exec_blocking(|env| {
-            // Open scope for execution (TODO hide this)
-            let scope = env.context_scope();
+    // Execute some JavaScript in the context
+    ctx.exec_blocking(|env| {
+        // Evaluate arbitrary JavaScript, the result of the last line is returned
+        let value = env.eval_script::<JsNumber>("1 + 1")?;
 
-            // Evaluate arbitrary JavaScript, the result of the last line is returned
-            let value = env.eval_script("1 + 1")?;
+        // Cast to Rust type
+        let result = value.get_u32()?;
 
-            // Cast to Rust type
-            let result = value.int32_value(scope).unwrap();
-
-            println!("Returned: {}", result);
-            Ok(())
-        })?;
-    };
+        println!("Returned: {}", result);
+        Ok(())
+    })?;
 
     Ok(())
 }
+
 ```
 
 ### Async
 
 ```rust
+use ion::*;
+
 pub fn main() -> anyhow::Result<()> {
-    // Start the runtime
-    let runtime = ion::platform::initialize_once()?;
+    let runtime = JsRuntime::initialize_once()?;
 
     // Create an isolate running on a dedicated thread
     let worker = runtime.spawn_worker()?;
+    let ctx = worker.create_context()?;
 
-    // Open a JavaScript context on the isolate thread to execute JavaScript on
-    // You can open multiple contexts, sharing the same thread
-    {
-        let ctx = worker.create_context()?;
+    ctx.exec_blocking(|env| {
+        // Spawn an future on the event loop
+        env.spawn_local({
+            let env = env.clone();
+            async move {
+                println!("Async Task Started");
 
-        // Execute some JavaScript in the context
-        ctx.exec_blocking(|env| {
-            // Spawn an future on the event loop
-            env.spawn_async_local({
-                let env = env.clone();
-                async move {
-                    // Open scope for execution (TODO hide this)
-                    let scope = env.context_scope();
+                let value = env.eval_script::<JsNumber>("1 + 1")?;
 
-                    // Evaluate arbitrary JavaScript, the result of the last line is returned
-                    let value = env.eval_script("1 + 1").unwrap();
+                // Wait for some time
+                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
-                    // Cast to Rust type
-                    let result = value.int32_value(scope).unwrap();
+                println!("Async Task Returned: {}", value.get_u32()?);
 
-                    println!("Returned: {}", result);
-                }
-            })?;
-
-            Ok(())
+                Ok(())
+            }
         })?;
-    };
+
+        Ok(())
+    })?;
 
     Ok(())
 }
