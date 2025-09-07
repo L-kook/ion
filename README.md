@@ -126,7 +126,7 @@ pub fn main() -> anyhow::Result<()> {
                 )
                 .unwrap();
 
-            println!("JavaScript function returned: {}", ret);
+            println!("JavaScript function returned: {}", ret); // "3"
             thread::sleep(Duration::from_secs(1));
         });
 
