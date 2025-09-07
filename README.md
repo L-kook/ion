@@ -30,13 +30,13 @@ For more, see [./examples](./examples)
 use ion::*;
 
 pub fn main() -> anyhow::Result<()> {
-    let runtime = JsRuntime::initialize_debug()?;
+    let runtime = JsRuntime::initialize_once()?;
 
     // Create an isolate running on a dedicated thread
     let worker = runtime.spawn_worker()?;
 
-    // // Open a JavaScript context on the isolate thread to execute JavaScript on
-    // // You can open multiple contexts, sharing the same thread
+    // Open a JavaScript context (a fresh globalThis) to execute JavaScript.
+    // You can open multiple contexts, sharing the same thread
     let ctx = worker.create_context()?;
 
     // Execute some JavaScript in the context
