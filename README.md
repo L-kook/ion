@@ -47,6 +47,7 @@ pub fn main() -> anyhow::Result<()> {
         // Cast to Rust type
         let result = value.get_u32()?;
 
+        // Prints "2"
         println!("Returned: {}", result);
         Ok(())
     })?;
@@ -64,7 +65,6 @@ use ion::*;
 pub fn main() -> anyhow::Result<()> {
     let runtime = JsRuntime::initialize_once()?;
 
-    // Create an isolate running on a dedicated thread
     let worker = runtime.spawn_worker()?;
     let ctx = worker.create_context()?;
 
