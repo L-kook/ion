@@ -1,6 +1,8 @@
 # Ion.js ⚡
 
-## JavaScript Runtime for Rust Embedders
+## A JavaScript Runtime for Rust
+
+Ion is a JavaScript runtime for integrating a JavaScript engine within a Rust program. This is useful for cases like building out a JavaScript powered plug-in system - but it can also be used directly from a stand alone executable.
 
 Goals:
 - ✅ Easy to use high-level API (Inspired by napi-rs)
@@ -9,7 +11,7 @@ Goals:
 - ✅ Positively multi-threaded
 - 👀 C FFI for embedders coming from other languages
 
-*Note: There is still much to do, but this is starting point!*
+
 
 ## CLI Usage
 
