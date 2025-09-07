@@ -92,3 +92,47 @@ pub fn main() -> anyhow::Result<()> {
     Ok(())
 }
 ```
+
+### Calling JavaScript from another Rust thread
+
+```rust
+use ion::*;
+
+pub fn main() -> anyhow::Result<()> {
+    let runtime = JsRuntime::initialize_once()?;
+
+    let worker = runtime.spawn_worker()?;
+    let ctx = worker.create_context()?;
+
+    // Create a function on the global scope
+    ctx.eval_script("globalThis.add = (a, b) => a + b")
+
+    // Execute some Rust code within the JavaScript realm
+    ctx.exec_blocking(|env| {
+        let global_this = env.global_this()?;
+        let function = global_this.get_named_property_unchecked::<JsFunction>("foo")?;
+
+        // Create a reference counted thread safe handle to the function
+        let tsfn = ThreadSafeFunction::new(&function)?;
+
+        // Send that function into a thread and call it
+        thread::spawn(move || {
+            let ret: u32 = tsfn
+                .call_blocking(
+                    // Map Rust values to be used as JavaScript values
+                    |env| Ok((1, 1)), 
+                    // Map the return type to be used in Rust
+                    |env, ret| ret.cast::<JsNumber>()?.get_u32(),
+                )
+                .unwrap();
+
+            println!("JavaScript function returned: {}", ret);
+            thread::sleep(Duration::from_secs(1));
+        });
+
+        Ok(())
+    })?;
+
+    Ok(())
+}
+```
