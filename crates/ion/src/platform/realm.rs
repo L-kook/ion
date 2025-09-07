@@ -5,7 +5,7 @@ use crate::DynResolver;
 use crate::Env;
 use crate::fs::FileSystem;
 use crate::platform::background_worker::BackgroundWorkerEvent;
-use crate::platform::module::ModuleMap;
+use crate::platform::module_map::ModuleMap;
 use crate::utils::channel::oneshot;
 
 // Container that constructs a V8 context and preserves the internals until dropped
@@ -102,7 +102,7 @@ impl JsRealm {
         &self.env
     }
 
-    pub fn async_background<'a, Return: 'static + Send + Sync>(
+    pub fn background_blocking<'a, Return: 'static + Send + Sync>(
         &self,
         fut: impl 'static + Send + Sync + Future<Output = crate::Result<Return>>,
     ) -> crate::Result<Return> {
@@ -115,7 +115,7 @@ impl JsRealm {
         rx.recv()?
     }
 
-    pub fn async_background_task<'a>(
+    pub fn background_async<'a>(
         &self,
         fut: impl 'static + Send + Sync + Future<Output = crate::Result<()>>,
     ) -> crate::Result<()> {

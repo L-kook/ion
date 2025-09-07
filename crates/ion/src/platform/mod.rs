@@ -1,5 +1,6 @@
 pub mod background_worker;
 pub mod module;
+pub mod module_map;
 pub(crate) mod platform;
 mod realm;
 mod reference;

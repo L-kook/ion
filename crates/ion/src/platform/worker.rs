@@ -22,8 +22,8 @@ use crate::ResolverContext;
 use crate::fs::FileSystem;
 use crate::platform::JsRealm;
 use crate::platform::background_worker::BackgroundWorkerEvent;
-use crate::platform::module::ModuleMap;
-use crate::platform::module::run_module;
+use crate::platform::module::Module;
+use crate::platform::module_map::ModuleMap;
 use crate::platform::resolve::run_resolvers;
 use crate::utils::HashMapExt;
 use crate::utils::PathExt;
@@ -126,21 +126,45 @@ async fn worker_thread_async(
                 specifier,
                 resolve,
             } => {
-                let result = run_resolvers(
-                    &resolvers,
-                    ResolverContext {
-                        fs: fs.clone(),
-                        specifier: specifier.clone(),
-                        from: std::env::current_dir().unwrap(),
-                    },
-                )
-                .await?;
-
-                run_module(
+                Module::v8_initialize(
+                    true,
                     realms.try_get(&id)?,
-                    result.path.try_to_string()?,
-                    String::from_utf8(result.code)?,
+                    &specifier,
+                    std::env::current_dir()?.try_to_string()?,
                 );
+
+                // {
+                //     let realm = realms.try_get(&id)?;
+                //     let env = realm.env();
+                //     let scope = &mut env.scope();
+                //     let module_map = realm.module_map();
+
+                //     dbg!(&module_map);
+
+                //     let module = module_map.get_module(&specifier).unwrap();
+                //     let v8_module = module.v8_module();
+
+                //     let exports = v8_module.get_module_namespace().cast::<v8::Object>();
+
+                //     let exports_arr = exports
+                //         .get_property_names(scope, Default::default())
+                //         .unwrap();
+
+                //     println!("len {}", exports_arr.length());
+                //     for i in 0..exports_arr.length() {
+                //         let i = v8::Number::new(scope, i as _).into();
+                //         let key = exports_arr.get(scope, i).unwrap();
+                //         println!(
+                //             "exports: {:?} -> {:?}",
+                //             key.to_rust_string_lossy(scope),
+                //             exports
+                //                 .get(scope, key.into())
+                //                 .unwrap()
+                //                 .cast::<v8::String>()
+                //                 .to_rust_string_lossy(scope),
+                //         );
+                //     }
+                // };
 
                 let result = resolve.try_send(())?;
             }

@@ -207,10 +207,9 @@ impl FileSystem {
                 }
                 #[cfg(windows)]
                 {
-                    println!("todo");
-                    // let mut x = fs::metadata(path)?.permissions();
-                    // x.set_readonly(perm.readonly());
-                    // Ok(())
+                    let mut x = fs::metadata(path).await?.permissions();
+                    x.set_readonly(perm.readonly());
+                    Ok(())
                 }
             }
             FileSystem::Virtual => todo!(),
@@ -374,4 +373,25 @@ impl Metadata {
 pub enum Permissions {
     Physical(std::fs::Permissions),
     Virtual,
+}
+
+impl Permissions {
+    #[cfg(windows)]
+    pub fn set_readonly(
+        &mut self,
+        readonly: bool,
+    ) {
+        match self {
+            Permissions::Physical(permissions) => permissions.set_readonly(readonly),
+            Permissions::Virtual => todo!(),
+        }
+    }
+
+    #[cfg(windows)]
+    pub fn readonly(&self) -> bool {
+        match self {
+            Permissions::Physical(permissions) => permissions.readonly(),
+            Permissions::Virtual => todo!(),
+        }
+    }
 }

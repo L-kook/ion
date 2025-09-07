@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use std::ffi::c_void;
 use std::time::Duration;
 
@@ -17,6 +18,7 @@ pub fn main() -> anyhow::Result<()> {
 }
 
 async fn main_async() -> anyhow::Result<()> {
+    println!("ok");
     // Spawn v8 Isolate
     // let mut isolate = v8::Isolate::new(v8::CreateParams::default());
 
