@@ -7,7 +7,7 @@ Goals:
 - ✅ Event-loop built on top of Tokio
 - ✅ Simple API to add a standard library
 - ✅ Positively multi-threaded
-- 👀 C FFI for embedders 
+- 👀 C FFI for embedders coming from other languages
 
 *Note: There is still much to do, but this is starting point!*
 
