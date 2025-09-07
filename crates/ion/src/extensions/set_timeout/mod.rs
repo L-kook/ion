@@ -14,7 +14,7 @@ use crate::JsValue;
 use crate::ThreadSafeFunction;
 use crate::thread_safe_function;
 
-static MODULE_NAME: &str = "ion:timer/timeout";
+static MODULE_NAME: &str = "ion:timers/timeout";
 static BINDING: &str = include_str!("./binding.js");
 
 fn extension_hook(

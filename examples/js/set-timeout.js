@@ -1,5 +1,5 @@
-// import console from 'ion:console'
-// import { setTimeout } from 'ion:timers'
+import console from 'ion:console'
+import { setTimeout } from 'ion:timers/timeout'
 
 console.log("Sync start")
 
