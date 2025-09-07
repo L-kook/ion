@@ -125,6 +125,15 @@ impl ToJsValue for i32 {
     }
 }
 
+impl ToJsValue for u32 {
+    fn to_js_value(
+        env: &Env,
+        val: Self,
+    ) -> crate::Result<Value> {
+        Ok(*JsNumber::from_u32(env, val)?.value())
+    }
+}
+
 impl Env {
     pub fn create_int32(
         &self,

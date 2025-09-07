@@ -14,8 +14,10 @@ pub fn main() -> anyhow::Result<()> {
     ctx.exec_blocking(|env| {
         let func = JsFunction::new(env, |_env, ctx| {
             let arg0 = ctx.arg::<JsNumber>(0)?;
-            println!("tsfn called {}", arg0.get_u32()?);
-            Ok(arg0)
+            let arg1 = ctx.arg::<JsNumber>(1)?;
+
+            let result = arg0.get_u32()? + arg1.get_u32()?;
+            Ok(result)
         })?;
 
         let tsfn = ThreadSafeFunction::new(&func)?;
@@ -23,9 +25,18 @@ pub fn main() -> anyhow::Result<()> {
         thread::spawn({
             let tsfn = tsfn.clone();
             move || {
+                let a = 1;
+                let b = 1;
+
                 let ret = tsfn
-                    .call_blocking(|_env| Ok(1), |_env, ret| ret.cast::<JsNumber>()?.get_u32())
+                    .call_blocking(
+                        // Rust values to pass into JavaScript
+                        move |_env| Ok((a, b)),
+                        // JavaScript values to pass back into Rust
+                        |_env, ret| ret.cast::<JsNumber>()?.get_u32(),
+                    )
                     .unwrap();
+
                 println!("Ret: {}", ret);
                 thread::sleep(Duration::from_secs(1));
             }
@@ -34,10 +45,18 @@ pub fn main() -> anyhow::Result<()> {
         thread::spawn({
             let tsfn = tsfn.clone();
             move || {
-                thread::sleep(Duration::from_secs(1));
+                let a = 1;
+                let b = 1;
+
                 let ret = tsfn
-                    .call_blocking(|_env| Ok(2), |_env, ret| ret.cast::<JsNumber>()?.get_u32())
+                    .call_blocking(
+                        // Rust values to pass into JavaScript
+                        move |_env| Ok((a, b)),
+                        // JavaScript values to pass back into Rust
+                        |_env, ret| ret.cast::<JsNumber>()?.get_u32(),
+                    )
                     .unwrap();
+
                 println!("Ret: {}", ret);
                 thread::sleep(Duration::from_secs(1));
             }

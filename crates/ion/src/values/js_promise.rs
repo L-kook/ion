@@ -13,7 +13,7 @@ pub struct JsPromise {
 }
 
 impl JsPromise {
-    pub fn new(env: &Env) -> crate::Result<JsPromise> {
+    pub fn new(_env: &Env) -> crate::Result<JsPromise> {
         todo!()
     }
 }
