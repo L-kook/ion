@@ -2,6 +2,7 @@ use crate::DynResolver;
 use crate::ResolverContext;
 use crate::ResolverResult;
 
+
 pub async fn run_resolvers(
     resolvers: &Vec<DynResolver>,
     ctx: ResolverContext,
@@ -21,5 +22,6 @@ pub async fn run_resolvers(
         }
     }
 
-    return Ok(None);
+    // Always fall back to resolving relative paths
+    crate::resolvers::relative(ctx).await
 }
