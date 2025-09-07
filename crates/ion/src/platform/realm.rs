@@ -12,7 +12,7 @@ use crate::utils::channel::oneshot;
 pub struct JsRealm {
     pub(crate) resolvers: Vec<DynResolver>,
     pub(crate) fs: FileSystem,
-    pub(crate) background: Sender<BackgroundWorkerEvent>,
+    background_tasks: *mut Sender<BackgroundWorkerEvent>,
     id: usize,
     env: Box<Env>,
     modules: *mut ModuleMap,
@@ -28,7 +28,7 @@ impl JsRealm {
         isolate_ptr: *mut v8::Isolate,
         fs: FileSystem,
         resolvers: Vec<DynResolver>,
-        background: Sender<BackgroundWorkerEvent>,
+        background_tasks: Sender<BackgroundWorkerEvent>,
     ) -> Box<Self> {
         let handle_scope = Box::new(v8::HandleScope::new(unsafe { &mut *isolate_ptr }));
         let handle_scope_ptr = Box::into_raw(handle_scope);
@@ -48,9 +48,17 @@ impl JsRealm {
         let context_scope_ptr = Box::into_raw(context_scope);
 
         let async_tasks = Box::new(TaskTracker::new());
-        let async_tasks_ptr = Box::into_raw(async_tasks);
+        let async_tasks_ptr: *mut TaskTracker = Box::into_raw(async_tasks);
 
-        let env = Env::new(isolate_ptr, context_ptr, global_this_ptr, async_tasks_ptr);
+        let background_tasks = Box::into_raw(Box::new(background_tasks));
+
+        let env = Env::new(
+            isolate_ptr,
+            context_ptr,
+            global_this_ptr,
+            async_tasks_ptr,
+            background_tasks,
+        );
 
         let modules = Box::into_raw(Box::new(ModuleMap::default()));
 
@@ -58,7 +66,7 @@ impl JsRealm {
             id: 0,
             env,
             fs,
-            background,
+            background_tasks,
             modules,
             resolvers,
             context: context_ptr,
@@ -93,6 +101,10 @@ impl JsRealm {
         unsafe { &mut *self.async_tasks }
     }
 
+    pub(crate) fn background_tasks(&self) -> &Sender<BackgroundWorkerEvent> {
+        unsafe { &mut *self.background_tasks }
+    }
+
     pub async fn drain_async_tasks(&self) {
         self.async_tasks().close();
         self.async_tasks().wait().await;
@@ -107,7 +119,7 @@ impl JsRealm {
         fut: impl 'static + Send + Sync + Future<Output = crate::Result<Return>>,
     ) -> crate::Result<Return> {
         let (tx, rx) = oneshot();
-        self.background
+        self.background_tasks()
             .try_send(BackgroundWorkerEvent::ExecFut(Box::pin(async move {
                 tx.try_send(fut.await).unwrap();
                 Ok(())
@@ -120,7 +132,7 @@ impl JsRealm {
         fut: impl 'static + Send + Sync + Future<Output = crate::Result<()>>,
     ) -> crate::Result<()> {
         Ok(self
-            .background
+            .background_tasks()
             .try_send(BackgroundWorkerEvent::ExecFut(Box::pin(fut)))?)
     }
 
@@ -140,11 +152,12 @@ impl JsRealm {
 
 impl Drop for JsRealm {
     fn drop(&mut self) {
+        drop(unsafe { Box::from_raw(self.async_tasks) });
+        drop(unsafe { Box::from_raw(self.background_tasks) });
         drop(unsafe { Box::from_raw(self.global_this as *mut v8::Global<v8::Object>) });
         drop(unsafe { Box::from_raw(self.context_scope) });
         drop(unsafe { Box::from_raw(self.context) });
         drop(unsafe { Box::from_raw(self.handle_scope) });
-        drop(unsafe { Box::from_raw(self.async_tasks) });
         drop(unsafe { Box::from_raw(self.modules) });
     }
 }

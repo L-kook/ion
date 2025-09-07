@@ -1,8 +1,11 @@
-console.log("Sync start")
+// import console from 'ion:console'
+// import { setTimeout } from 'ion:timers'
 
-setTimeout(() => console.log("Async done 1000"), 1000)
-setTimeout(() => console.log("Async done 2000"), 2000)
-setTimeout(() => console.log("Async done 3000"), 3000)
-setTimeout(() => console.log("Async done 4000"), 4000)
+// console.log("Sync start")
 
-console.log("Sync end")
+// setTimeout(() => console.log("Async done 1000"), 1)
+// setTimeout(() => console.log("Async done 2000"), 2)
+// setTimeout(() => console.log("Async done 3000"), 3)
+// setTimeout(() => console.log("Async done 4000"), 4)
+
+// console.log("Sync end")

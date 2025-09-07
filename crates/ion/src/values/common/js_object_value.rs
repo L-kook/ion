@@ -1,4 +1,6 @@
 #![allow(unused)]
+use crate::platform::Value;
+
 use super::*;
 
 pub trait JsObjectValue: JsValue {
@@ -12,20 +14,20 @@ pub trait JsObjectValue: JsValue {
         K: JsValue,
         V: JsValue,
     {
-        // let env = self.env();
-        // let scope = &env.scope;
+        let env = self.env();
+        let scope = &mut env.scope();
 
-        // let object_value = self.value();
-        // let object_raw = object_value.inner();
-        // let object = object_raw.cast::<v8::Object>();
+        let object_value = self.value();
+        let object_raw = object_value.inner();
+        let object = object_raw.cast::<v8::Object>();
 
-        // let key_value = key.value();
-        // let key = key_value.inner();
+        let key_value = key.value();
+        let key = key_value.inner();
 
-        // let value_value = value.value();
-        // let value = value_value.inner();
+        let value_value = value.value();
+        let value = value_value.inner();
 
-        // object.set(scope.current(), key, value);
+        object.set(scope, key, value);
         Ok(())
     }
 
@@ -38,19 +40,19 @@ pub trait JsObjectValue: JsValue {
     where
         T: ToJsValue,
     {
-        // let env = self.env();
-        // let scope = &env.scope;
+        let env = self.env();
+        let scope = &mut env.scope();
 
-        // let key = crate::utils::v8::v8_create_string(scope.current(), name)?;
+        let key = crate::utils::v8::v8_create_string(scope, name)?;
 
-        // let object_value = self.value();
-        // let object_raw = object_value.inner();
-        // let object = object_raw.cast::<v8::Object>();
+        let object_value = self.value();
+        let object_raw = object_value.inner();
+        let object = object_raw.cast::<v8::Object>();
 
-        // let value_value = T::to_js_value(env, value)?;
-        // let value = value_value.inner();
+        let value_value = T::to_js_value(env, value)?;
+        let value = value_value.inner();
 
-        // object.set(scope.current(), key.into(), value.into());
+        object.set(scope, key.into(), value.into());
 
         Ok(())
     }
@@ -66,12 +68,28 @@ pub trait JsObjectValue: JsValue {
     /// Get the property value from the `Object`
     ///
     /// Return the `InvalidArg` error if the property is not `T`
-    // fn get_named_property<T>(&self, name: &str) -> crate::Result<T>
-    // where
-    //     T: FromJsValue + ValidateNapiValue,
-    // {
-    //     todo!();
-    // }
+    fn get_named_property<T>(
+        &self,
+        name: &str,
+    ) -> crate::Result<Option<T>>
+    where
+        T: FromJsValue,
+    {
+        let env = self.env();
+        let scope = &mut env.scope();
+
+        let key = crate::utils::v8::v8_create_string(scope, name)?;
+
+        let object_value = self.value();
+        let object_raw = object_value.inner();
+        let object = object_raw.cast::<v8::Object>();
+
+        let Some(result) = object.get(scope, key.into()) else {
+            return Ok(None);
+        };
+
+        Ok(Some(T::from_js_value(env, Value::from(result))?))
+    }
 
     /// Get the property value from the `Object` without validation
     fn get_named_property_unchecked<T>(
@@ -81,7 +99,20 @@ pub trait JsObjectValue: JsValue {
     where
         T: FromJsValue,
     {
-        todo!();
+        let env = self.env();
+        let scope = &mut env.scope();
+
+        let key = crate::utils::v8::v8_create_string(scope, name)?;
+
+        let object_value = self.value();
+        let object_raw = object_value.inner();
+        let object = object_raw.cast::<v8::Object>();
+
+        let Some(result) = object.get(scope, key.into()) else {
+            return Err(crate::Error::ValueGetError);
+        };
+
+        Ok(T::from_js_value(env, Value::from(result))?)
     }
 
     /// Check if the `Object` has the named property
@@ -100,7 +131,15 @@ pub trait JsObjectValue: JsValue {
     where
         S: JsValue,
     {
-        todo!();
+        let env = self.env();
+        let scope = &mut env.scope();
+
+        let object_value = self.value();
+        let object_raw = object_value.inner();
+        let object = object_raw.cast::<v8::Object>();
+
+        object.delete(scope, name.value().inner().into());
+        Ok(true)
     }
 
     /// Delete the property from the `Object`
@@ -108,16 +147,16 @@ pub trait JsObjectValue: JsValue {
         &mut self,
         name: K,
     ) -> crate::Result<bool> {
-        // let env = self.env();
-        // let scope = env.scope.current();
+        let env = self.env();
+        let scope = &mut env.scope();
 
-        // let key = crate::utils::v8::v8_create_string(scope, name)?;
+        let key = crate::utils::v8::v8_create_string(scope, name)?;
 
-        // let object_value = self.value();
-        // let object_raw = object_value.inner();
-        // let object = object_raw.cast::<v8::Object>();
+        let object_value = self.value();
+        let object_raw = object_value.inner();
+        let object = object_raw.cast::<v8::Object>();
 
-        // object.delete(scope, key.into());
+        object.delete(scope, key.into());
         Ok(true)
     }
 

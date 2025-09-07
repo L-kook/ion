@@ -1,18 +1,17 @@
 use crate::Env;
 use crate::ToJsUnknown;
 use crate::platform::Value;
-use crate::utils::v8::v8_create_undefined;
 use crate::values::FromJsValue;
 use crate::values::JsValue;
 use crate::values::ToJsValue;
 
 #[derive(Clone)]
-pub struct JsUnknown {
+pub struct JsNull {
     pub(crate) value: Value,
     pub(crate) env: Env,
 }
 
-impl JsUnknown {
+impl JsNull {
     pub unsafe fn cast_unchecked<T: FromJsValue>(self) -> T {
         T::from_js_value(&self.env, self.value).expect("Failed to cast JsUnknown")
     }
@@ -30,7 +29,7 @@ impl JsUnknown {
     }
 }
 
-impl JsValue for JsUnknown {
+impl JsValue for JsNull {
     fn value(&self) -> &Value {
         &self.value
     }
@@ -40,9 +39,9 @@ impl JsValue for JsUnknown {
     }
 }
 
-impl ToJsUnknown for JsUnknown {}
+impl ToJsUnknown for JsNull {}
 
-impl FromJsValue for JsUnknown {
+impl FromJsValue for JsNull {
     fn from_js_value(
         env: &Env,
         value: Value,
@@ -54,7 +53,7 @@ impl FromJsValue for JsUnknown {
     }
 }
 
-impl ToJsValue for JsUnknown {
+impl ToJsValue for JsNull {
     fn to_js_value(
         _env: &Env,
         val: Self,
@@ -63,13 +62,9 @@ impl ToJsValue for JsUnknown {
     }
 }
 
-impl ToJsValue for () {
-    fn to_js_value(
-        env: &Env,
-        _val: Self,
-    ) -> crate::Result<Value> {
-        let scope = &mut env.scope();
-        let local = v8_create_undefined(scope)?;
-        Ok(Value::from(local))
+impl Env {
+    pub fn get_null(&self) -> crate::Result<JsNull> {
+        let scope = &mut self.scope();
+        JsNull::from_js_value(self, Value::from(v8::null(scope).cast()))
     }
 }

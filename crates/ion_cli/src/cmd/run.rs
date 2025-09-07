@@ -22,7 +22,13 @@ pub fn main(command: RunCommand) -> anyhow::Result<()> {
     .normalize();
 
     let runtime = ion::JsRuntime::initialize_once()?;
-    runtime.register_resolver(ion::resolvers::relative);
+
+    // Resolvers
+    runtime.register_resolver(ion::resolvers::relative)?;
+
+    // Extensions
+    runtime.register_extension(ion::extensions::console())?;
+    runtime.register_extension(ion::extensions::set_timeout())?;
 
     let worker = runtime.spawn_worker()?;
     let ctx = worker.create_context()?;

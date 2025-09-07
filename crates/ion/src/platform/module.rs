@@ -2,6 +2,7 @@ use std::ffi::c_void;
 use std::path::Path;
 use std::path::PathBuf;
 
+use crate::JsValue;
 use crate::ResolverContext;
 use crate::platform::JsRealm;
 use crate::platform::resolve::run_resolvers;
@@ -19,8 +20,8 @@ pub enum ModuleStatus {
 pub struct Module {
     pub(crate) id: i32,
     pub(crate) name: String,
+    pub(crate) status: ModuleStatus,
     module: *mut c_void,
-    status: ModuleStatus,
 }
 
 impl Module {
@@ -30,6 +31,7 @@ impl Module {
         source: impl AsRef<str>,
     ) -> crate::Result<Self> {
         let env = realm.env();
+
         let scope = &mut env.scope();
 
         let v8_name = v8_create_string(scope, name.as_ref())?;
@@ -79,6 +81,15 @@ impl Module {
     ) -> crate::Result<v8::Local<'static, v8::Module>> {
         let module_map = realm.module_map();
 
+        if let Some(module) = module_map.get_module(&name) {
+            if module.status == ModuleStatus::Initializing {
+                return Ok(module.v8_module());
+            }
+            if module.status == ModuleStatus::Ready {
+                return Ok(module.v8_module());
+            }
+        };
+
         let Some(result) = realm
             .background_blocking({
                 let ctx = ResolverContext {
@@ -94,15 +105,6 @@ impl Module {
             return Err(crate::Error::FileNotFound(name.as_ref().to_string()));
         };
 
-        if let Some(module) = module_map.get_module(&name) {
-            if module.status == ModuleStatus::Initializing {
-                return Ok(module.v8_module());
-            }
-            if module.status == ModuleStatus::Ready {
-                return Ok(module.v8_module());
-            }
-        };
-
         let module = Module::new(
             realm,
             result.path.try_to_string()?,
@@ -116,6 +118,8 @@ impl Module {
         let scope = &mut env.scope();
 
         if is_entry {
+            scope.set_host_initialize_import_meta_object_callback(init_meta_callback);
+
             v8_module
                 .instantiate_module(scope, Module::v8_initialize_callback)
                 .unwrap();
@@ -129,6 +133,19 @@ impl Module {
             .get_module_mut(&result.path.try_to_string().unwrap())
             .unwrap();
         module.status = ModuleStatus::Ready;
+
+        if v8_module.get_status() == v8::ModuleStatus::Errored {
+            let key = v8::String::new(scope, "message").unwrap().into();
+            println!(
+                "Error: {:?}",
+                v8_module
+                    .get_exception()
+                    .cast::<v8::Object>()
+                    .get(scope, key)
+                    .unwrap()
+                    .to_rust_string_lossy(scope)
+            );
+        }
 
         Ok(v8_module)
     }
@@ -144,7 +161,6 @@ impl Module {
 
         let realm = JsRealm::v8_revive(scope);
         let specifier = specifier.to_rust_string_lossy(scope);
-
         let referrer_module = realm
             .module_map()
             .get_module_by_id(&referrer.get_identity_hash().into())
@@ -161,4 +177,27 @@ impl Drop for Module {
     fn drop(&mut self) {
         drop(unsafe { Box::from_raw(self.module as *mut v8::Local<'static, v8::Module>) })
     }
+}
+
+unsafe extern "C" fn init_meta_callback(
+    context: v8::Local<v8::Context>,
+    module: v8::Local<v8::Module>,
+    meta: v8::Local<v8::Object>,
+) {
+    let scope = &mut unsafe { v8::CallbackScope::new(context) };
+    let realm = JsRealm::v8_revive(scope);
+    let env = realm.env();
+
+    // Extensions
+    // TEMP, use data or statics or something
+    {
+        let global_this = env.global_this().unwrap();
+        let global_this = global_this.value().inner().cast::<v8::Object>();
+        let key = v8::Integer::new(scope, module.get_identity_hash().into());
+        if let Some(exports) = global_this.get(scope, key.into()) {
+            global_this.delete(scope, key.into()).unwrap();
+            let key = v8::String::new(scope, "extension").unwrap();
+            meta.create_data_property(scope, key.into(), exports);
+        };
+    };
 }

@@ -43,11 +43,13 @@ pub(crate) fn start_background_worker_thread()
 
 async fn background_worker_thread_async(rx: Receiver<BackgroundWorkerEvent>) -> crate::Result<()> {
     while let Ok(event) = rx.recv_async().await {
-        match event {
-            BackgroundWorkerEvent::ExecFut(future) => {
-                future.await.unwrap();
+        tokio::task::spawn(async move {
+            match event {
+                BackgroundWorkerEvent::ExecFut(future) => {
+                    future.await.unwrap();
+                }
             }
-        }
+        });
     }
 
     Ok(())

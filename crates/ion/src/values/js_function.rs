@@ -12,6 +12,7 @@ use crate::values::FromJsValue;
 use crate::values::JsValue;
 use crate::values::ToJsValue;
 
+#[derive(Debug, Clone)]
 pub struct JsFunction {
     pub(crate) value: Value,
     pub(crate) this: Option<Value>,
@@ -40,7 +41,12 @@ impl JsFunction {
             env.into_raw(),
             1,
             ReferenceOwnership::Rust,
-            Some(Box::new(move |_| drop(unsafe { Box::from_raw(callback) }))),
+            Some(Box::new(move |_| {
+                drop(unsafe {
+                    println!("dropped");
+                    Box::from_raw(callback)
+                })
+            })),
         );
 
         let value = v8::Function::builder(
@@ -73,17 +79,6 @@ impl JsFunction {
             this: None,
             env: env.clone(),
         })
-    }
-
-    pub fn clone(
-        &self,
-        env: &Env,
-    ) -> Self {
-        Self {
-            value: self.value.clone(),
-            this: self.this.clone(),
-            env: env.clone(),
-        }
     }
 
     pub fn call<Return>(&self) -> crate::Result<Return>
@@ -180,6 +175,10 @@ impl<'a> JsFunctionCallContext<'a> {
         let value = Value::from(self.args.get(i));
         let value = Arg::from_js_value(&unsafe { Env::from_raw(self.env) }, value)?;
         Ok(value)
+    }
+
+    pub fn len(&self) -> i32 {
+        self.args.length()
     }
 }
 

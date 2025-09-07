@@ -1,4 +1,5 @@
 pub mod background_worker;
+pub(crate) mod extension;
 pub mod module;
 pub mod module_map;
 pub(crate) mod platform;

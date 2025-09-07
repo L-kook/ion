@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 pub type v8_value = *mut c_void;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Value(v8_value);
 
 impl Value {

@@ -13,6 +13,12 @@ pub trait FromJsValue: Sized {
 pub trait JsValue: Sized + FromJsValue {
     fn value(&self) -> &Value;
     fn env(&self) -> &Env;
+
+    fn type_of(&self) -> String {
+        let scope = &mut self.env().scope();
+        let type_of = self.value().inner().type_of(scope);
+        type_of.to_rust_string_lossy(scope)
+    }
 }
 
 pub trait ToJsValue: Sized {

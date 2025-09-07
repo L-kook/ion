@@ -1,118 +1,110 @@
-#![allow(warnings)]
-use std::cell::LazyCell;
 use std::cell::RefCell;
-use std::collections::HashMap;
-use std::time::Duration;
+use std::rc::Rc;
 
-use flume::Sender;
+use flume::unbounded;
 
-pub use crate::Env;
-use crate::utils::channel::oneshot;
-pub use crate::utils::v8_create_function_from_closure;
+use crate::Env;
+use crate::FromJsValue;
+use crate::JsExtension;
+use crate::JsFunction;
+use crate::JsNumber;
+use crate::JsObject;
+use crate::JsObjectValue;
+use crate::JsUnknown;
+use crate::JsValue;
+use crate::platform::Value;
 
-thread_local! {
-    static TIMEOUTS: LazyCell<RefCell<(
-        HashMap<u32, Sender<()>>,
-        u32,
-    )>> = Default::default();
+static MODULE_NAME: &str = "ion:timers";
+static BINDING: &str = include_str!("./binding.js");
+
+enum SetTimeoutEvent {
+    RunCallback { timer_ref: u32 },
+    Shutdown,
 }
 
-fn insert_timeout(sig: Sender<()>) -> u32 {
-    TIMEOUTS.with(|c| {
-        let mut state = c.borrow_mut();
-        state.1 += 1;
-        let id = state.1.clone();
-        state.0.insert(id.clone(), sig);
-        id
-    })
+fn extension_hook(
+    env: &Env,
+    exports: &mut JsObject,
+) -> crate::Result<()> {
+    let run_timeout_callback: Rc<RefCell<Option<v8::Global<v8::Value>>>> = Default::default();
+    let (tx, rx) = unbounded::<SetTimeoutEvent>();
+
+    env.on_before_exit({
+        let tx = tx.clone();
+        move || Ok(tx.try_send(SetTimeoutEvent::Shutdown)?)
+    });
+
+    env.spawn_local({
+        let env = env.clone();
+        let run_timeout_callback = Rc::clone(&run_timeout_callback);
+        async move {
+            while let Ok(event) = rx.recv_async().await {
+                match event {
+                    SetTimeoutEvent::RunCallback { timer_ref } => {
+                        let scope = &mut env.scope();
+
+                        let cell = run_timeout_callback.borrow();
+                        let callback = cell.as_ref().unwrap();
+                        let callback = v8::Local::new(scope, callback);
+                        let callback = JsFunction::from_js_value(&env, Value::from(callback))?;
+
+                        let timer_ref = env.create_uint32(timer_ref)?;
+                        callback.call_with_args::<JsUnknown, _>(timer_ref)?;
+                    }
+                    SetTimeoutEvent::Shutdown => break,
+                }
+            }
+            Ok(())
+        }
+    })?;
+
+    exports.set_named_property(
+        "onTimeoutCallback",
+        JsFunction::new(env, {
+            let run_timeout_callback = Rc::clone(&run_timeout_callback);
+            move |env, ctx| {
+                let scope = &mut env.scope();
+
+                let arg0 = ctx.arg::<JsFunction>(0)?;
+                let arg0 = v8::Global::new(scope, arg0.value().inner());
+
+                let mut cell = run_timeout_callback.borrow_mut();
+                cell.replace(arg0);
+                Ok(())
+            }
+        })?,
+    )?;
+
+    exports.set_named_property(
+        "createSetTimeout",
+        JsFunction::new(env, {
+            move |env, ctx| {
+                let timer_ref = ctx.arg::<JsNumber>(0)?.get_u32()?;
+                let duration = ctx.arg::<JsNumber>(1)?.get_u32()?;
+
+                env.spawn_background({
+                    let tx = tx.clone();
+                    async move {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(duration as u64))
+                            .await;
+
+                        tx.try_send(SetTimeoutEvent::RunCallback { timer_ref })?;
+                        Ok(())
+                    }
+                })?;
+
+                Ok(())
+            }
+        })?,
+    )?;
+
+    Ok(())
 }
 
-fn remove_timeout(id: &u32) -> Option<Sender<()>> {
-    TIMEOUTS.with(|c| {
-        let mut state = c.borrow_mut();
-        state.0.remove(id)
-    })
-}
-
-pub fn define_set_timeout(env: &Env) {
-    // let env = env.clone();
-
-    // let ctx = env.context();
-    // let scope = env.context_scope();
-
-    // let global_this = ctx.global(scope);
-
-    // // setTimeout
-    // {
-    //     let js_key = v8::String::new(scope, "setTimeout").unwrap();
-    //     let js_fn = v8_create_function_from_closure(scope, {
-    //         let env = env.clone();
-
-    //         move |cb_scope, args, mut return_value| {
-    //             let callback = {
-    //                 let arg0 = args.get(0).try_cast::<v8::Function>().unwrap();
-    //                 Box::new(v8::Global::new(cb_scope, arg0))
-    //             };
-
-    //             let duration = {
-    //                 let arg1 = args.get(1).try_cast::<v8::Number>().unwrap();
-    //                 let a = v8::Local::new(cb_scope, arg1);
-    //                 a.int32_value(cb_scope).unwrap()
-    //             };
-
-    //             let (tx, rx) = oneshot();
-    //             let id = insert_timeout(tx);
-
-    //             env.spawn_async_local({
-    //                 let env = env.clone();
-
-    //                 async move {
-    //                     env.sleep(Duration::from_millis(duration as _)).await;
-    //                     drop(remove_timeout(&id));
-    //                     if !rx.is_empty() {
-    //                         return;
-    //                     }
-
-    //                     {
-    //                         let scope = &mut env.open_scope();
-    //                         let a = v8::Local::new(scope, *callback);
-    //                         let recv = v8::undefined(scope);
-    //                         a.call(scope, recv.into(), &[]);
-    //                     };
-    //                 }
-    //             })
-    //             .unwrap();
-
-    //             let js_id = v8::Integer::new_from_unsigned(cb_scope, id);
-    //             return_value.set(js_id.into());
-    //         }
-    //     });
-
-    //     let js_fn = js_fn.to_local(scope).unwrap();
-
-    //     global_this.set(scope, js_key.into(), js_fn.into());
-    // }
-
-    // // clearTimeout
-    // {
-    //     let js_key = v8::String::new(scope, "clearTimeout").unwrap();
-    //     let js_fn = v8_create_function_from_closure(scope, {
-    //         move |cb_scope, args, _return_value| {
-    //             let id = {
-    //                 let arg0 = args.get(0).cast::<v8::Number>();
-    //                 arg0.uint32_value(cb_scope).unwrap()
-    //             };
-
-    //             let Some(tx) = remove_timeout(&id) else {
-    //                 panic!("No timeout for: {}", id)
-    //             };
-
-    //             tx.try_send(()).unwrap();
-    //         }
-    //     })
-    //     .to_local(scope)
-    //     .unwrap();
-
-    //     global_this.set(scope, js_key.into(), js_fn.into());
-    // }
+pub fn set_timeout() -> JsExtension {
+    JsExtension::NativeModuleWithBinding {
+        module_name: MODULE_NAME.to_string(),
+        binding: BINDING.to_string(),
+        extension: Box::new(extension_hook),
+    }
 }

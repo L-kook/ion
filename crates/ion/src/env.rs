@@ -1,10 +1,14 @@
 use std::ffi::c_void;
 use std::path::Path;
+use std::rc::Rc;
 
+use flume::Sender;
 use tokio_util::task::TaskTracker;
 
 use crate::FromJsValue;
+use crate::JsObject;
 use crate::platform::Value;
+use crate::platform::background_worker::BackgroundWorkerEvent;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Env {
@@ -12,22 +16,30 @@ pub struct Env {
     pub(crate) context: *mut v8::Local<'static, v8::Context>,
     pub(crate) global_this: *mut c_void, // v8::Global<v8::Object>,
     pub(crate) async_tasks: *mut TaskTracker,
+    pub(crate) background_tasks: *mut Sender<BackgroundWorkerEvent>,
     pub(crate) inner: *mut Env,
+    pub(crate) on_before_exit: *mut Vec<Rc<dyn 'static + Fn() -> crate::Result<()>>>,
 }
 
 impl Env {
-    pub fn new(
+    pub(crate) fn new(
         isolate_ptr: *mut v8::Isolate,
         context: *mut v8::Local<'static, v8::Context>,
         global_this: *mut v8::Global<v8::Object>,
         async_tasks: *mut TaskTracker,
+        background_tasks: *mut Sender<BackgroundWorkerEvent>,
     ) -> Box<Self> {
+        let on_before_exit = Vec::<Rc<dyn 'static + Fn() -> crate::Result<()>>>::new();
+        let on_before_exit = Box::into_raw(Box::new(on_before_exit));
+
         let mut env = Box::new(Env {
             isolate_ptr: isolate_ptr,
             context,
             global_this: global_this as _,
             async_tasks: async_tasks,
+            background_tasks,
             inner: std::ptr::null_mut(),
+            on_before_exit,
         });
 
         env.inner = env.as_mut() as *mut Env;
@@ -42,8 +54,12 @@ impl Env {
         unsafe { *(r as *mut Env) }
     }
 
-    pub fn async_tasks(&self) -> &TaskTracker {
+    pub(crate) fn async_tasks(&self) -> &TaskTracker {
         unsafe { &mut *self.async_tasks }
+    }
+
+    pub(crate) fn background_tasks(&self) -> &Sender<BackgroundWorkerEvent> {
+        unsafe { &mut *self.background_tasks }
     }
 
     pub fn isolate(&mut self) -> &mut v8::Isolate {
@@ -51,9 +67,10 @@ impl Env {
         unsafe { &mut *self.isolate_ptr }
     }
 
-    pub fn global_this(&self) -> v8::Global<v8::Object> {
-        let v = self.global_this as *mut v8::Global<v8::Object>;
-        unsafe { (*v).clone() }
+    pub fn global_this(&self) -> crate::Result<JsObject> {
+        let v = self.global_this as *mut v8::Local<'static, v8::Object>;
+        let v = unsafe { (*v).clone() };
+        JsObject::from_js_value(self, Value::from(v.cast()))
     }
 
     pub fn context(&self) -> v8::Local<'static, v8::Context> {
@@ -70,25 +87,31 @@ impl Env {
         unsafe { v8::CallbackScope::new(*context) }
     }
 
-    pub fn timeout(
+    /// Non blocking action on the current thread.
+    /// Note: [`v8::HandleScope`]s don't survive a call to ".await"
+    pub fn spawn_local(
         &self,
-        callback: impl 'static + FnOnce(&mut v8::CallbackScope<'static>),
-        duration: std::time::Duration,
-    ) {
-        let context = unsafe { &mut *self.context };
-        self.async_tasks().spawn_local(async move {
-            tokio::time::sleep(duration).await;
-            let scope = &mut unsafe { v8::CallbackScope::new(*context) };
-            callback(scope);
-        });
+        fut: impl 'static + Future<Output = crate::Result<()>>,
+    ) -> crate::Result<()> {
+        self.async_tasks().spawn_local(fut);
+        Ok(())
     }
 
-    pub fn timeout_ms(
+    pub fn on_before_exit(
         &self,
-        callback: impl 'static + FnOnce(&mut v8::CallbackScope<'static>),
-        duration: u64,
+        callback: impl 'static + Fn() -> crate::Result<()>,
     ) {
-        self.timeout(callback, tokio::time::Duration::from_millis(duration));
+        (unsafe { &mut *self.on_before_exit }).push(Rc::new(callback));
+    }
+
+    /// Send a task to a background thread
+    pub fn spawn_background(
+        &self,
+        fut: impl 'static + Send + Sync + Future<Output = crate::Result<()>>,
+    ) -> crate::Result<()> {
+        self.background_tasks()
+            .try_send(BackgroundWorkerEvent::ExecFut(Box::pin(fut)))?;
+        Ok(())
     }
 
     pub fn eval_script<Return: FromJsValue>(
