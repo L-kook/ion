@@ -2,14 +2,17 @@
 
 export function setTimeout(
     /** @type {Function} */ callback,
-    /** @type {number} */ duration,
+    /** @type {number} */ duration = 0,
     /** @type {Array<any>} */ ...args
 ) {
-    // @ts-expect-error
     return import.meta.extension.setTimeout(() => callback(...args), duration)
 }
 
-export function clearTimeout(/** @type {number} */ ref) {
-    // @ts-expect-error
+export function clearTimeout(/** @type {string} */ ref) {
     return import.meta.extension.clearTimeout(ref)
 }
+
+// @ts-expect-error
+globalThis.setTimeout = setTimeout
+// @ts-expect-error
+globalThis.clearTimeout = clearTimeout

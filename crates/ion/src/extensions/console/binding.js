@@ -1,3 +1,5 @@
+// @ts-check
+
 export default class Console {
     static log(...args) {
         import.meta.extension.log(...args)
@@ -13,3 +15,5 @@ export default class Console {
 }
 
 export const console = Console
+// @ts-expect-error
+globalThis.console = console

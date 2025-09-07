@@ -151,7 +151,7 @@ impl Module {
     }
 
     // Called by v8_initialize
-    fn v8_initialize_callback<'a>(
+    pub(crate) fn v8_initialize_callback<'a>(
         context: v8::Local<'a, v8::Context>,
         specifier: v8::Local<'a, v8::String>,
         _import_attributes: v8::Local<'a, v8::FixedArray>,
@@ -179,7 +179,7 @@ impl Drop for Module {
     }
 }
 
-unsafe extern "C" fn init_meta_callback(
+pub(crate) unsafe extern "C" fn init_meta_callback(
     context: v8::Local<v8::Context>,
     module: v8::Local<v8::Module>,
     meta: v8::Local<v8::Object>,

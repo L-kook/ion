@@ -6,6 +6,7 @@ use crate::JsValue;
 use crate::platform::JsRealm;
 use crate::platform::module::Module;
 use crate::platform::module::ModuleStatus;
+use crate::platform::module::init_meta_callback;
 
 pub struct Extension {}
 
@@ -44,6 +45,17 @@ impl Extension {
                         let value = exports.value().inner();
                         global_this.set(scope, key.into(), value.into());
                     };
+
+                    // Initialize extension module
+                    scope.set_host_initialize_import_meta_object_callback(init_meta_callback);
+
+                    v8_module
+                        .instantiate_module(scope, Module::v8_initialize_callback)
+                        .unwrap();
+
+                    let promise = v8_module.evaluate(scope).unwrap().cast::<v8::Promise>();
+                    scope.perform_microtask_checkpoint();
+                    promise.result(scope);
 
                     let module = module_map.get_module_mut(module_name).unwrap();
                     module.status = ModuleStatus::Ready;
