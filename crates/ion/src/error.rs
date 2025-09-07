@@ -24,6 +24,8 @@ pub enum Error {
     TaskSpawnError,
     OutOfBounds,
     ResolveError,
+    NewInstanceError,
+    PromiseResolveError,
     FileNotFound(String),
 }
 

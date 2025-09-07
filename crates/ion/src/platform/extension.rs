@@ -66,11 +66,53 @@ impl Extension {
                 } => {
                     // CreateSyntheticModule
                 }
-                JsExtension::NativeGlobal { hook: _ } => {
-                    // Exec
+                JsExtension::NativeGlobal { extension } => {
+                    let env = realm.env();
+                    let mut global_this = env.global_this()?;
+                    extension(env, &mut global_this)?;
                 }
-                JsExtension::GlobalBinding { binding: _ } => {
-                    // Eval
+                JsExtension::GlobalBinding { binding } => {
+                    let env = realm.env();
+                    let scope = &mut env.scope();
+
+                    let Some(code) = v8::String::new(scope, binding) else {
+                        panic!();
+                    };
+
+                    let Some(script) = v8::Script::compile(scope, code, None) else {
+                        panic!();
+                    };
+
+                    script.run(scope);
+                }
+                JsExtension::BindingModule {
+                    module_name,
+                    binding,
+                } => {
+                    let env = realm.env();
+                    let module_map = realm.module_map();
+
+                    // Construct module for binding
+                    let module = Module::new(realm, module_name, binding)?;
+                    let v8_module = module.v8_module();
+                    module_map.insert(module);
+
+                    // Initialize binding module
+                    let scope = &mut env.scope();
+
+                    // Initialize extension module
+                    scope.set_host_initialize_import_meta_object_callback(init_meta_callback);
+
+                    v8_module
+                        .instantiate_module(scope, Module::v8_initialize_callback)
+                        .unwrap();
+
+                    let promise = v8_module.evaluate(scope).unwrap().cast::<v8::Promise>();
+                    scope.perform_microtask_checkpoint();
+                    promise.result(scope);
+
+                    let module = module_map.get_module_mut(module_name).unwrap();
+                    module.status = ModuleStatus::Ready;
                 }
             }
         }

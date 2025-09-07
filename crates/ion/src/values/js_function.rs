@@ -1,6 +1,7 @@
 use std::ffi::c_int;
 
 use crate::Env;
+use crate::JsObject;
 use crate::JsObjectValue;
 use crate::JsValuesTupleIntoVec;
 use crate::ToJsUnknown;
@@ -114,6 +115,32 @@ impl JsFunction {
 
         let value = Value::from(result);
         Return::from_js_value(&self.env, value)
+    }
+
+    pub fn new_instance<Args>(
+        &self,
+        args: Args,
+    ) -> crate::Result<JsObject>
+    where
+        Args: JsValuesTupleIntoVec,
+    {
+        let scope = &mut self.env.scope();
+
+        let args = args.into_vec(&self.env)?;
+        let mut args_v8 = vec![];
+        for arg in args {
+            args_v8.push(arg.inner());
+        }
+
+        let local = self.value.inner();
+        let local = local.cast::<v8::Function>();
+
+        let Some(result) = local.new_instance(scope, &args_v8) else {
+            return Err(crate::Error::NewInstanceError);
+        };
+
+        let value = Value::from(result.cast());
+        JsObject::from_js_value(&self.env, value)
     }
 }
 

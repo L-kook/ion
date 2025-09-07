@@ -8,12 +8,12 @@ pub fn main() -> anyhow::Result<()> {
     // runtime.register_preprocessor(ion::preprocessor::typescript);
 
     // Resolve relative paths
-    runtime.register_resolver(ion::resolvers::relative);
+    runtime.register_resolver(ion::resolvers::relative)?;
 
     // Register extensions
-    runtime.register_extension(ion::extensions::console());
-    runtime.register_extension(ion::extensions::set_timeout());
-    runtime.register_extension(ion::extensions::set_interval());
+    runtime.register_extension(ion::extensions::console())?;
+    runtime.register_extension(ion::extensions::set_timeout())?;
+    runtime.register_extension(ion::extensions::set_interval())?;
 
     let worker = runtime.spawn_worker()?;
     let ctx = worker.create_context()?;

@@ -12,14 +12,14 @@
 // use self::http1::ResponseBuilderExt;
 // use self::worker_pool::WorkerPool;
 
-const HANDLER: &str = include_str!("../../js/faas-handlers/index.handler.js");
+// const HANDLER: &str = include_str!("../../js/faas-handlers/index.handler.js");
 
-#[derive(Debug)]
-pub enum HttpEvent {
-    WriteHead(u32),
-    Write(String),
-    End,
-}
+// #[derive(Debug)]
+// pub enum HttpEvent {
+//     WriteHead(u32),
+//     Write(String),
+//     End,
+// }
 
 pub fn main() -> anyhow::Result<()> {
     // // Start the runtime from the main thread

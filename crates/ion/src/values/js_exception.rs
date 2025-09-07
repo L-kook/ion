@@ -1,3 +1,4 @@
+// TODO
 use crate::Env;
 use crate::ToJsUnknown;
 use crate::platform::Value;
@@ -5,20 +6,15 @@ use crate::values::FromJsValue;
 use crate::values::JsValue;
 use crate::values::ToJsValue;
 
-/// JsDiffered is a type that allows for waiting on asynchronous
-/// behavior, returning a Promise that can be externally resolved.
-///
-/// You can think of this as essentially a oneshot channel that
-/// returns a Promise to JavaScript
 #[derive(Clone)]
-pub struct JsDiffered {
+pub struct JsException {
     pub(crate) value: Value,
     pub(crate) env: Env,
 }
 
-impl JsDiffered {
+impl JsException {
     pub unsafe fn cast_unchecked<T: FromJsValue>(self) -> T {
-        T::from_js_value(&self.env, self.value).expect("Failed to cast JsDiffered")
+        T::from_js_value(&self.env, self.value).expect("Failed to cast JsException")
     }
 
     pub fn cast<T: FromJsValue>(self) -> crate::Result<T> {
@@ -26,7 +22,7 @@ impl JsDiffered {
     }
 }
 
-impl JsValue for JsDiffered {
+impl JsValue for JsException {
     fn value(&self) -> &Value {
         &self.value
     }
@@ -36,9 +32,9 @@ impl JsValue for JsDiffered {
     }
 }
 
-impl ToJsUnknown for JsDiffered {}
+impl ToJsUnknown for JsException {}
 
-impl FromJsValue for JsDiffered {
+impl FromJsValue for JsException {
     fn from_js_value(
         env: &Env,
         value: Value,
@@ -50,7 +46,7 @@ impl FromJsValue for JsDiffered {
     }
 }
 
-impl ToJsValue for JsDiffered {
+impl ToJsValue for JsException {
     fn to_js_value(
         _env: &Env,
         val: Self,

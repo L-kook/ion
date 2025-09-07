@@ -4,9 +4,6 @@ pub fn main() -> anyhow::Result<()> {
     // Start the runtime
     let runtime = JsRuntime::initialize_once()?;
 
-    // Resolve relative paths
-    runtime.register_resolver(ion::resolvers::relative);
-
     // Register extension with glue code
     runtime.register_extension(JsExtension::NativeModuleWithBinding {
         module_name: "ion:foo".to_string(),

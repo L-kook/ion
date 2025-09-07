@@ -16,8 +16,13 @@ pub enum JsExtension {
         module_name: String,
         extension: ExtensionHook,
     },
+    /// Extension that runs JavaScript code to generate a module
+    BindingModule {
+        module_name: String,
+        binding: String,
+    },
     /// Extension that runs native code when a JsContext is started, used to mutate globalThis
-    NativeGlobal { hook: ExtensionHook },
+    NativeGlobal { extension: ExtensionHook },
     /// Extension that runs JavaScript code when a JsContext is started, used to mutate globalThis
     GlobalBinding { binding: String },
 }
@@ -39,12 +44,16 @@ impl std::fmt::Debug for JsExtension {
             } => {
                 write!(f, "NativeModule({})", module_name)
             }
-            JsExtension::NativeGlobal { hook: _ } => {
+            JsExtension::NativeGlobal { extension: _ } => {
                 write!(f, "NativeGlobal(unnamed)")
             }
             JsExtension::GlobalBinding { binding: _ } => {
                 write!(f, "GlobalBinding(unnamed)")
             }
+            JsExtension::BindingModule {
+                module_name,
+                binding: _,
+            } => write!(f, "NativeModuleWithBinding({})", module_name),
         }
     }
 }
