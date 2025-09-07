@@ -4,12 +4,15 @@ pub fn main() -> anyhow::Result<()> {
     // Start the runtime
     let runtime = JsRuntime::initialize_once()?;
 
+    // Resolve relative paths
+    runtime.register_resolver(ion::resolvers::relative);
+
     // Register extension with glue code
     runtime.register_extension(JsExtension::NativeModuleWithBinding {
         module_name: "ion:foo".to_string(),
         binding: r#"
             export function foo() {
-                return import.meta.ext.foo
+                return import.meta.extension.foo
             }
         "#
         .to_string(),
@@ -25,14 +28,16 @@ pub fn main() -> anyhow::Result<()> {
     let ctx = worker.create_context()?;
 
     ctx.exec_blocking(|env| {
-        let result = env.eval_script::<JsString>(
+        let module = env.eval_module(
             r#"
             import { foo } from "ion:foo";
-            foo()
+
+            export default foo()
         "#,
         )?;
 
-        println!("Got: {}", result.get_string()?);
+        let default_export = module.get_named_property_unchecked::<JsString>("default")?;
+        println!("Got: {}", default_export.get_string()?);
         Ok(())
     })?;
 

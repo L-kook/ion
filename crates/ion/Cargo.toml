@@ -18,3 +18,4 @@ normalize-path.workspace = true
 async_fn_traits = "0.1.1"
 num_cpus.workspace = true
 parking_lot.workspace = true
+rand = "0.9.2"

@@ -7,8 +7,11 @@ use tokio_util::task::TaskTracker;
 
 use crate::FromJsValue;
 use crate::JsObject;
+use crate::platform::JsRealm;
 use crate::platform::Value;
 use crate::platform::background_worker::BackgroundWorkerEvent;
+use crate::platform::module::Module;
+use crate::utils::generate_random_string;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Env {
@@ -142,6 +145,25 @@ impl Env {
         };
 
         Return::from_js_value(self, Value::from(value))
+    }
+
+    pub fn eval_module(
+        &self,
+        code: impl AsRef<str>,
+    ) -> crate::Result<JsObject> {
+        let scope = &mut self.scope();
+        let realm = JsRealm::v8_revive(scope);
+
+        let module = Module::new(
+            realm,
+            &generate_random_string(20),
+            code.as_ref().to_string(),
+        )?;
+
+        let v8_module = Module::v8_run_module(true, realm, module.name.clone(), module)?;
+        let v8_module = v8_module.get_module_namespace().cast::<v8::Object>();
+
+        JsObject::from_js_value(self, Value::from(v8_module.cast()))
     }
 
     /// Load a file and evaluate it

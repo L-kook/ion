@@ -1,5 +1,5 @@
 /** @type {import("./faas").HandlerFunc} */
-globalThis.handler = async (req, res) => {
+export function handler(req, res) {
     console.log("Handler running")
 
     // TODO headers

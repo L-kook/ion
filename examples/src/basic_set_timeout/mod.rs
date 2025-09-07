@@ -1,38 +1,39 @@
+use ion::*;
+
 pub fn main() -> anyhow::Result<()> {
-    // let runtime = ion::platform::initialize_once()?;
-    // let worker = runtime.spawn_worker()?;
+    let runtime = JsRuntime::initialize_debug()?;
 
-    // {
-    //     let ctx = worker.create_context()?;
+    // Resolve relative paths
+    runtime.register_resolver(ion::resolvers::relative);
 
-    //     ctx.exec_blocking(|env| {
-    //         ion::exts::define_console(&env);
-    //         ion::exts::define_set_timeout(&env);
-    //         Ok(())
-    //     })?;
+    // Register extensions
+    runtime.register_extension(ion::extensions::console());
+    runtime.register_extension(ion::extensions::set_timeout());
+    runtime.register_extension(ion::extensions::set_interval());
 
-    //     ctx.exec_blocking(|env| {
-    //         env.eval_script(
-    //             r#"
-    //             const sleep = d => new Promise(r => setTimeout(r, d))
+    let worker = runtime.spawn_worker()?;
+    let ctx = worker.create_context()?;
 
-    //             void async function main() {
-    //                 console.log(`1`)
-    //                 await sleep(1000)
-    //                 console.log(`2`)
-    //                 await sleep(1000)
-    //                 console.log(`3`)
-    //                 await sleep(1000)
-    //                 console.log(`4`)
-    //                 await sleep(1000)
-    //                 console.log(`5`)
-    //             }()
-    //         "#,
-    //         )?;
+    ctx.exec_blocking(|env| {
+        env.eval_script::<JsUnknown>(
+            r#"
+                const sleep = d => new Promise(r => setTimeout(r, d))
 
-    //         Ok(())
-    //     })?;
-    // };
+                void async function main() {
+                    console.log(`1`)
+                    await sleep(1000)
+                    console.log(`2`)
+                    await sleep(1000)
+                    console.log(`3`)
+                    await sleep(1000)
+                    console.log(`4`)
+                    await sleep(1000)
+                    console.log(`5`)
+                }()
+            "#,
+        )?;
 
+        Ok(())
+    })?;
     Ok(())
 }

@@ -150,6 +150,52 @@ impl Module {
         Ok(v8_module)
     }
 
+    pub fn v8_run_module(
+        is_entry: bool,
+        realm: &JsRealm,
+        module_name: String,
+        module: Module,
+    ) -> crate::Result<v8::Local<'static, v8::Module>> {
+        let module_map = realm.module_map();
+
+        let v8_module = module.v8_module();
+        module_map.insert(module);
+
+        let env = realm.env();
+        let scope = &mut env.scope();
+
+        if is_entry {
+            scope.set_host_initialize_import_meta_object_callback(init_meta_callback);
+
+            v8_module
+                .instantiate_module(scope, Module::v8_initialize_callback)
+                .unwrap();
+
+            let promise = v8_module.evaluate(scope).unwrap().cast::<v8::Promise>();
+            scope.perform_microtask_checkpoint();
+            promise.result(scope);
+        }
+
+        let module = module_map.get_module_mut(&module_name).unwrap();
+
+        module.status = ModuleStatus::Ready;
+
+        if v8_module.get_status() == v8::ModuleStatus::Errored {
+            let key = v8::String::new(scope, "message").unwrap().into();
+            println!(
+                "Error: {:?}",
+                v8_module
+                    .get_exception()
+                    .cast::<v8::Object>()
+                    .get(scope, key)
+                    .unwrap()
+                    .to_rust_string_lossy(scope)
+            );
+        }
+
+        Ok(v8_module)
+    }
+
     // Called by v8_initialize
     pub(crate) fn v8_initialize_callback<'a>(
         context: v8::Local<'a, v8::Context>,
