@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::sync::Arc;
+
 use crate::Env;
 use crate::ToJsUnknown;
 use crate::platform::Value;
@@ -64,6 +67,42 @@ impl ToJsValue for JsString {
         val: Self,
     ) -> crate::Result<Value> {
         Ok(val.value.clone())
+    }
+}
+
+impl ToJsValue for String {
+    fn to_js_value(
+        env: &Env,
+        val: Self,
+    ) -> crate::Result<Value> {
+        Ok(*JsString::new(env, val)?.value())
+    }
+}
+
+impl ToJsValue for &str {
+    fn to_js_value(
+        env: &Env,
+        val: Self,
+    ) -> crate::Result<Value> {
+        Ok(*JsString::new(env, val)?.value())
+    }
+}
+
+impl ToJsValue for Rc<str> {
+    fn to_js_value(
+        env: &Env,
+        val: Self,
+    ) -> crate::Result<Value> {
+        Ok(*JsString::new(env, val)?.value())
+    }
+}
+
+impl ToJsValue for Arc<str> {
+    fn to_js_value(
+        env: &Env,
+        val: Self,
+    ) -> crate::Result<Value> {
+        Ok(*JsString::new(env, val)?.value())
     }
 }
 

@@ -114,10 +114,7 @@ async fn worker_thread_async(
             }
             JsWorkerEvent::ShutdownContext { id, resolve } => {
                 let realm = realms.try_remove(&id)?;
-                let env = realm.env();
-                for on_before_exit in unsafe { &mut *env.on_before_exit }.into_iter() {
-                    drop(on_before_exit());
-                }
+                realm.notify_shutdown();
                 realm.drain_async_tasks().await;
                 resolve.try_send(())?;
             }

@@ -41,12 +41,7 @@ impl JsFunction {
             env.into_raw(),
             1,
             ReferenceOwnership::Rust,
-            Some(Box::new(move |_| {
-                drop(unsafe {
-                    println!("dropped");
-                    Box::from_raw(callback)
-                })
-            })),
+            Some(Box::new(move |_| drop(unsafe { Box::from_raw(callback) }))),
         );
 
         let value = v8::Function::builder(

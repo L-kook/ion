@@ -570,6 +570,7 @@ dependencies = [
  "futures",
  "normalize-path",
  "num_cpus",
+ "parking_lot",
  "tokio",
  "tokio-util",
  "v8",

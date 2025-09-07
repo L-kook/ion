@@ -1,5 +1,8 @@
+import console from 'ion:console'
+import { setTimeout, clearTimeout } from 'ion:timers'
+
 async function main() {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 2; i++) {
         await waitForSetTimeout(i)
         await new Promise((res) => setTimeout(res, 2000));
     }
@@ -23,3 +26,4 @@ async function waitForSetTimeout(run) {
 
     console.log(`[${run}] Sync end`);
 }
+

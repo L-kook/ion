@@ -19,6 +19,7 @@ pub struct Env {
     pub(crate) background_tasks: *mut Sender<BackgroundWorkerEvent>,
     pub(crate) inner: *mut Env,
     pub(crate) on_before_exit: *mut Vec<Rc<dyn 'static + Fn() -> crate::Result<()>>>,
+    pub(crate) shutdown_has_run: *mut bool,
 }
 
 impl Env {
@@ -32,6 +33,8 @@ impl Env {
         let on_before_exit = Vec::<Rc<dyn 'static + Fn() -> crate::Result<()>>>::new();
         let on_before_exit = Box::into_raw(Box::new(on_before_exit));
 
+        let shutdown_has_run = Box::into_raw(Box::new(false));
+
         let mut env = Box::new(Env {
             isolate_ptr: isolate_ptr,
             context,
@@ -40,6 +43,7 @@ impl Env {
             background_tasks,
             inner: std::ptr::null_mut(),
             on_before_exit,
+            shutdown_has_run,
         });
 
         env.inner = env.as_mut() as *mut Env;
@@ -101,7 +105,12 @@ impl Env {
         &self,
         callback: impl 'static + Fn() -> crate::Result<()>,
     ) {
+        (*unsafe { &mut *self.shutdown_has_run }) = true;
         (unsafe { &mut *self.on_before_exit }).push(Rc::new(callback));
+    }
+
+    pub fn shutdown_has_run(&self) -> bool {
+        return unsafe { *self.shutdown_has_run };
     }
 
     /// Send a task to a background thread

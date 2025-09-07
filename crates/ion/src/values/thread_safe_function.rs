@@ -35,7 +35,7 @@ impl ThreadSafeFunction {
             let env = env.clone();
             async move {
                 let ref_count = RefCounter::new(1);
-                let mut can_shutdown = false;
+                let mut can_shutdown = env.shutdown_has_run();
                 let inner = inner;
 
                 while let Ok(event) = rx.recv_async().await {
@@ -159,4 +159,24 @@ enum ThreadSafeFunctionEvent {
     Ref,
     Unref,
     Shutdown,
+}
+
+pub mod map_arguments {
+    use crate::Env;
+
+    pub fn noop(_env: &Env) -> crate::Result<()> {
+        Ok(())
+    }
+}
+
+pub mod map_return {
+    use crate::Env;
+    use crate::JsUnknown;
+
+    pub fn noop(
+        _env: &Env,
+        _ret: JsUnknown,
+    ) -> crate::Result<()> {
+        Ok(())
+    }
 }

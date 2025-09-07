@@ -114,6 +114,12 @@ impl JsRealm {
         &self.env
     }
 
+    pub fn notify_shutdown(&self) {
+        for on_before_exit in unsafe { &mut *self.env.on_before_exit }.into_iter() {
+            drop(on_before_exit());
+        }
+    }
+
     pub fn background_blocking<'a, Return: 'static + Send + Sync>(
         &self,
         fut: impl 'static + Send + Sync + Future<Output = crate::Result<Return>>,
