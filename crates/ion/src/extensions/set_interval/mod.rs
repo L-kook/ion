@@ -1,14 +1,92 @@
+use std::collections::HashSet;
+use std::sync::Arc;
+
+use parking_lot::RwLock;
+
 use crate::Env;
 use crate::JsExtension;
+use crate::JsFunction;
+use crate::JsNumber;
 use crate::JsObject;
+use crate::JsObjectValue;
+use crate::JsString;
+use crate::JsValue;
+use crate::ThreadSafeFunction;
+use crate::thread_safe_function;
 
 static MODULE_NAME: &str = "ion:timers/interval";
 static BINDING: &str = include_str!("./binding.js");
 
 fn extension_hook(
-    _env: &Env,
-    _exports: &mut JsObject,
+    env: &Env,
+    exports: &mut JsObject,
 ) -> crate::Result<()> {
+    let timer_refs = Arc::new(RwLock::new(HashSet::<String>::new()));
+
+    exports.set_named_property(
+        "setInterval",
+        JsFunction::new(env, {
+            let timer_refs = Arc::clone(&timer_refs);
+
+            move |env, ctx| {
+                let arg0 = ctx.arg::<JsFunction>(0)?;
+                let arg1 = ctx.arg::<JsNumber>(1)?;
+
+                let callback = ThreadSafeFunction::new(&arg0)?;
+                let duration = arg1.get_u32()?;
+                let timer_ref = format!("{}", arg1.value().address());
+
+                {
+                    let mut timer_refs = timer_refs.write();
+                    timer_refs.insert(timer_ref.clone());
+                }
+
+                env.spawn_background({
+                    let timer_ref = timer_ref.clone();
+                    let timer_refs = Arc::clone(&timer_refs);
+                    async move {
+                        loop {
+                            tokio::time::sleep(tokio::time::Duration::from_millis(duration as u64))
+                                .await;
+
+                            {
+                                let timer_refs = timer_refs.read();
+                                if !timer_refs.contains(&timer_ref) {
+                                    return Ok(());
+                                }
+                            }
+
+                            callback
+                                .call_async(
+                                    thread_safe_function::map_arguments::noop,
+                                    thread_safe_function::map_return::noop,
+                                )
+                                .await?;
+                        }
+                    }
+                })?;
+
+                Ok(timer_ref)
+            }
+        })?,
+    )?;
+
+    exports.set_named_property(
+        "clearInterval",
+        JsFunction::new(env, {
+            move |_env, ctx| {
+                let arg0 = ctx.arg::<JsString>(0)?;
+
+                {
+                    let mut timer_refs = timer_refs.write();
+                    timer_refs.remove(&arg0.get_string()?);
+                }
+
+                Ok(())
+            }
+        })?,
+    )?;
+
     Ok(())
 }
 

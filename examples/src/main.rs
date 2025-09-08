@@ -1,6 +1,7 @@
 mod basic;
 mod basic_async;
 mod basic_resolver;
+mod basic_set_interval;
 mod basic_set_timeout;
 mod deferred;
 mod extensions_basic;
@@ -19,6 +20,7 @@ fn main() -> anyhow::Result<()> {
         "basic_async" => basic_async::main(),
         "basic_set_timeout" => basic_set_timeout::main(),
         "basic_resolver" => basic_resolver::main(),
+        "basic_set_interval" => basic_set_interval::main(),
         "deferred" => deferred::main(),
         "extensions_basic" => extensions_basic::main(),
         "http_server" => http_server::main(),
