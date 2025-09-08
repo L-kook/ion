@@ -32,39 +32,32 @@ impl JsContext {
         Ok(())
     }
 
-    pub async fn exec_async(
+    pub async fn exec_async<Return: 'static + Send + Sync>(
         &self,
-        callback: impl 'static + Send + FnOnce(&Env) -> crate::Result<()>,
-    ) -> crate::Result<()> {
+        callback: impl 'static + Send + FnOnce(&Env) -> crate::Result<Return>,
+    ) -> crate::Result<Return> {
         let (tx, rx) = bounded(1);
 
-        self.exec(move |env| {
-            callback(env)?;
-            Ok(tx.try_send(())?)
-        })?;
+        self.exec(move |env| Ok(tx.try_send(callback(env)?)?))?;
 
-        if rx.recv_async().await.is_err() {
+        let Ok(ret) = rx.recv_async().await else {
             return Err(Error::ExecError);
         };
-
-        Ok(())
+        Ok(ret)
     }
 
-    pub fn exec_blocking(
+    pub fn exec_blocking<Return: Send + Sync + 'static>(
         &self,
-        callback: impl 'static + Send + FnOnce(&Env) -> crate::Result<()>,
-    ) -> crate::Result<()> {
-        let (tx, rx) = bounded(1);
+        callback: impl 'static + Send + FnOnce(&Env) -> crate::Result<Return>,
+    ) -> crate::Result<Return> {
+        let (tx, rx) = bounded::<Return>(1);
 
-        self.exec(move |env| {
-            callback(env)?;
-            Ok(tx.try_send(())?)
-        })?;
+        self.exec(move |env| Ok(tx.try_send(callback(env)?)?))?;
 
-        if rx.recv().is_err() {
+        let Ok(ret) = rx.recv() else {
             return Err(Error::ExecError);
         };
-        Ok(())
+        Ok(ret)
     }
 
     /// Evaluate script, ignoring return value. If you need the return value
