@@ -1,11 +1,11 @@
 mod basic;
 mod basic_async;
-mod basic_resolver;
-mod basic_set_interval;
-mod basic_set_timeout;
+mod custom_extension;
+mod custom_resolver;
 mod deferred;
-mod extensions_basic;
 mod http_server;
+mod set_interval;
+mod set_timeout;
 mod thread_safe_function;
 
 fn main() -> anyhow::Result<()> {
@@ -18,11 +18,11 @@ fn main() -> anyhow::Result<()> {
     match example.as_str() {
         "basic" => basic::main(),
         "basic_async" => basic_async::main(),
-        "basic_set_timeout" => basic_set_timeout::main(),
-        "basic_resolver" => basic_resolver::main(),
-        "basic_set_interval" => basic_set_interval::main(),
+        "set_timeout" => set_timeout::main(),
+        "custom_resolver" => custom_resolver::main(),
+        "set_interval" => set_interval::main(),
         "deferred" => deferred::main(),
-        "extensions_basic" => extensions_basic::main(),
+        "custom_extension" => custom_extension::main(),
         "http_server" => http_server::main(),
         "thread_safe_function" => thread_safe_function::main(),
         _ => Err(anyhow::anyhow!("No example for: \"{}\"", example)),
