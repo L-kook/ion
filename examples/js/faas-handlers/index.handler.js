@@ -1,6 +1,6 @@
 /** @type {import("./faas").HandlerFunc} */
 export function handler(req, res) {
-    console.log("Handler running")
+    // console.log("Handler running")
 
     // TODO headers
     // res.headers().set("Content-Type", "text/html; charset=utf-8");
