@@ -19,7 +19,8 @@ impl WorkerPool {
     ) -> Self {
         let mut workers = vec![];
 
-        for _ in 0..worker_count {
+        for i in 0..worker_count {
+            println!("[{}] Worker Started", i);
             workers.push(runtime.spawn_worker().unwrap());
         }
 
@@ -39,7 +40,7 @@ impl WorkerPool {
 
     pub fn get_worker(&self) -> &JsWorker {
         let next = self.next_index();
-        // println!("Worker {}", next);
+        println!("[{}] Worker Got Job", next);
         &self.workers[next]
     }
 
