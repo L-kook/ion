@@ -2,6 +2,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
@@ -13,6 +14,7 @@ use flume::Sender;
 use flume::bounded;
 use flume::unbounded;
 use tokio_util::task::TaskTracker;
+use v8::Isolate;
 
 use crate::DynResolver;
 use crate::Env;
@@ -110,9 +112,15 @@ async fn worker_thread_async(
             }
             JsWorkerEvent::ShutdownContext { id, resolve } => {
                 let realm = realms.try_remove(&id)?;
-                realm.context_scope.enter();
                 realm.notify_shutdown();
                 realm.drain_async_tasks().await;
+
+                realm.context_scope.exit();
+                let isolate = realm._isolate.as_mut() as *mut v8::Isolate;
+                unsafe {
+                    (*isolate).exit();
+                };
+
                 resolve.try_send(())?;
             }
             JsWorkerEvent::Exec { id, callback } => {
@@ -142,7 +150,7 @@ async fn worker_thread_async(
                     realm.context_scope.enter();
                     realm.notify_shutdown();
                     realm.drain_async_tasks().await;
-                    realm.drain_async_tasks().await;
+                    realm.context_scope.exit();
                 }
                 resolve.try_send(())?;
                 break;

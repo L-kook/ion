@@ -21,6 +21,13 @@ impl RawContextScope {
             ctx.enter();
         };
     }
+
+    pub fn exit(&self) {
+        let ctx = self.as_mut();
+        unsafe {
+            ctx.exit();
+        };
+    }
 }
 
 impl Deref for RawContextScope {
