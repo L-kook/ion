@@ -95,13 +95,13 @@ async fn worker_thread_async(
     let mut realms = HashMap::<usize, Box<JsRealm>>::new();
     let fs = FileSystem::Physical;
 
-    // Create an isolate dedicated to this "worker" thread
-    let mut isolate = v8::Isolate::new(v8::CreateParams::default());
-    let isolate_ptr = isolate.as_mut() as *mut v8::Isolate;
-
     while let Ok(event) = rx.recv_async().await {
         match event {
             JsWorkerEvent::CreateContext { resolve } => {
+                // Create an isolate dedicated to this "worker" thread
+                let mut isolate = v8::Isolate::new(v8::CreateParams::default());
+                let isolate_ptr = Box::into_raw(Box::new(isolate));
+
                 let realm = JsRealm::new(
                     isolate_ptr,
                     fs.clone(),
@@ -150,7 +150,7 @@ async fn worker_thread_async(
                 break;
             }
             JsWorkerEvent::RunGarbageCollectionForTesting { resolve } => {
-                isolate.request_garbage_collection_for_testing(v8::GarbageCollectionType::Full);
+                // isolate.request_garbage_collection_for_testing(v8::GarbageCollectionType::Full);
                 resolve.try_send(())?;
             }
         }

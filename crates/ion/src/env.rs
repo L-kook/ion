@@ -16,7 +16,7 @@ use crate::utils::generate_random_string;
 
 #[derive(Clone)]
 pub struct Env {
-    pub(crate) isolate_ptr: *mut v8::Isolate,
+    pub(crate) isolate_ptr: *mut v8::OwnedIsolate,
     pub(crate) context: *mut v8::Local<'static, v8::Context>,
     pub(crate) global_this: *mut c_void, // v8::Global<v8::Object>,
     pub(crate) async_tasks: *mut TaskTracker,
@@ -28,7 +28,7 @@ pub struct Env {
 
 impl Env {
     pub(crate) fn new(
-        isolate_ptr: *mut v8::Isolate,
+        isolate_ptr: *mut v8::OwnedIsolate,
         context: *mut v8::Local<'static, v8::Context>,
         global_this: *mut v8::Global<v8::Object>,
         async_tasks: *mut TaskTracker,

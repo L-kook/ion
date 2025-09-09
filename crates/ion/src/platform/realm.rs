@@ -15,6 +15,7 @@ pub struct JsRealm {
     background_tasks: *mut Sender<BackgroundWorkerEvent>,
     id: usize,
     env: Box<Env>,
+    isolate_ptr: *mut v8::OwnedIsolate,
     modules: *mut ModuleMap,
     context: *mut v8::Local<'static, v8::Context>,
     global_this: *mut std::ffi::c_void, // v8::Global<v8::Object>,
@@ -25,7 +26,7 @@ pub struct JsRealm {
 
 impl JsRealm {
     pub(crate) fn new(
-        isolate_ptr: *mut v8::Isolate,
+        isolate_ptr: *mut v8::OwnedIsolate,
         fs: FileSystem,
         resolvers: Vec<DynResolver>,
         background_tasks: Sender<BackgroundWorkerEvent>,
@@ -69,6 +70,7 @@ impl JsRealm {
             background_tasks,
             modules,
             resolvers,
+            isolate_ptr,
             context: context_ptr,
             global_this: global_this_ptr as _,
             async_tasks: async_tasks_ptr,
@@ -167,5 +169,6 @@ impl Drop for JsRealm {
         drop(unsafe { Box::from_raw(self.context) });
         drop(unsafe { Box::from_raw(self.handle_scope) });
         drop(unsafe { Box::from_raw(self.modules) });
+        drop(unsafe { Box::from_raw(self.isolate_ptr) });
     }
 }
