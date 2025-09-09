@@ -7,6 +7,7 @@ pub(crate) mod platform;
 mod realm;
 mod reference;
 pub mod resolve;
+pub(crate) mod v8;
 pub mod value;
 pub(crate) mod worker;
 

@@ -38,8 +38,7 @@ async fn main_async(runtime: Arc<JsRuntime>) -> anyhow::Result<()> {
         // How many threads to create
         worker_count: num_cpus::get_physical(),
         // How many JavaScript contexts to share that thread
-        // TODO: Increasing the count beyond 1 causes it to break
-        contexts_per_worker: 1,
+        contexts_per_worker: num_cpus::get_physical(),
     })?);
 
     http1::http1_server("0.0.0.0:4200", move |req, res| {

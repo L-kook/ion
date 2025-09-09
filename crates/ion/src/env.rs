@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::ffi::c_void;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -12,25 +11,32 @@ use crate::platform::JsRealm;
 use crate::platform::Value;
 use crate::platform::background_worker::BackgroundWorkerEvent;
 use crate::platform::module::Module;
+use crate::platform::v8::RawContext;
+use crate::platform::v8::RawContextScope;
+use crate::platform::v8::RawGlobal;
+use crate::platform::v8::RawIsolate;
 use crate::utils::generate_random_string;
 
 #[derive(Clone)]
 pub struct Env {
-    pub(crate) isolate_ptr: *mut v8::OwnedIsolate,
-    pub(crate) context: *mut v8::Local<'static, v8::Context>,
-    pub(crate) global_this: *mut c_void, // v8::Global<v8::Object>,
-    pub(crate) async_tasks: *mut TaskTracker,
-    pub(crate) background_tasks: *mut Sender<BackgroundWorkerEvent>,
     pub(crate) inner: *mut Env,
+    pub(crate) isolate: Rc<RawIsolate>,
+    pub(crate) context: Rc<RawContext>,
+    pub(crate) context_scope: Rc<RawContextScope>,
+    pub(crate) global_this: Rc<RawGlobal>,
     pub(crate) on_before_exit: RefCell<Vec<Rc<dyn 'static + Fn() -> crate::Result<()>>>>,
     pub(crate) shutdown_has_run: RefCell<bool>,
+    // TODO make these refcells
+    pub(crate) async_tasks: *mut TaskTracker,
+    pub(crate) background_tasks: *mut Sender<BackgroundWorkerEvent>,
 }
 
 impl Env {
     pub(crate) fn new(
-        isolate_ptr: *mut v8::OwnedIsolate,
-        context: *mut v8::Local<'static, v8::Context>,
-        global_this: *mut v8::Global<v8::Object>,
+        isolate: Rc<RawIsolate>,
+        context: Rc<RawContext>,
+        context_scope: Rc<RawContextScope>,
+        global_this: Rc<RawGlobal>,
         async_tasks: *mut TaskTracker,
         background_tasks: *mut Sender<BackgroundWorkerEvent>,
     ) -> Box<Self> {
@@ -40,9 +46,10 @@ impl Env {
         let shutdown_has_run = RefCell::new(false);
 
         let mut env = Box::new(Env {
-            isolate_ptr,
+            isolate,
             context,
-            global_this: global_this as _,
+            context_scope,
+            global_this,
             async_tasks,
             background_tasks,
             inner: std::ptr::null_mut(),
@@ -75,27 +82,21 @@ impl Env {
 
     pub fn isolate(&mut self) -> &mut v8::Isolate {
         // SAFETY: Lifetime of `Isolate` is longer than `Env`.
-        unsafe { &mut *self.isolate_ptr }
+        self.isolate.as_mut()
     }
 
     pub fn global_this(&self) -> crate::Result<JsObject> {
-        let v = self.global_this as *mut v8::Local<'static, v8::Object>;
-        let v = unsafe { *v };
+        let v = self.global_this.as_inner();
         JsObject::from_js_value(self, Value::from(v.cast()))
     }
 
     pub fn context(&self) -> v8::Local<'static, v8::Context> {
-        unsafe { *self.context }
+        self.context.as_inner()
     }
 
     pub fn scope(&self) -> v8::CallbackScope<'static> {
-        // SAFETY: `v8::Local` is always non-null pointer; the `HandleScope` is
-        // already on the stack, but we don't have access to it.
-        let context = unsafe { &mut *self.context };
-        // SAFETY: there must be a `HandleScope` on the stack, this is ensured because
-        // we are in a V8 callback or the module has already opened a `HandleScope`
-        // using `napi_open_handle_scope`.
-        unsafe { v8::CallbackScope::new(*context) }
+        let context = self.context.as_inner();
+        unsafe { v8::CallbackScope::new(context) }
     }
 
     /// Non blocking action on the current thread.

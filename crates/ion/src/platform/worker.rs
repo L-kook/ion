@@ -26,6 +26,7 @@ use crate::platform::extension::Extension;
 use crate::platform::module::Module;
 use crate::platform::module_map::ModuleMap;
 use crate::platform::resolve::run_resolvers;
+use crate::platform::v8::RawIsolate;
 use crate::utils::HashMapExt;
 use crate::utils::PathExt;
 use crate::utils::channel::oneshot;
@@ -98,17 +99,9 @@ async fn worker_thread_async(
     while let Ok(event) = rx.recv_async().await {
         match event {
             JsWorkerEvent::CreateContext { resolve } => {
-                // Create an isolate dedicated to this "worker" thread
-                let mut isolate = v8::Isolate::new(v8::CreateParams::default());
-                let isolate_ptr = Box::into_raw(Box::new(isolate));
-
-                let realm = JsRealm::new(
-                    isolate_ptr,
-                    fs.clone(),
-                    resolvers.clone(),
-                    tx_background.clone(),
-                );
+                let realm = JsRealm::new(fs.clone(), resolvers.clone(), tx_background.clone());
                 let realm_id = realm.id();
+                realm.context_scope.enter();
 
                 Extension::register_extensions(&realm, &extensions);
 
@@ -117,12 +110,14 @@ async fn worker_thread_async(
             }
             JsWorkerEvent::ShutdownContext { id, resolve } => {
                 let realm = realms.try_remove(&id)?;
+                realm.context_scope.enter();
                 realm.notify_shutdown();
                 realm.drain_async_tasks().await;
                 resolve.try_send(())?;
             }
             JsWorkerEvent::Exec { id, callback } => {
                 let realm = realms.try_get(&id)?;
+                realm.context_scope.enter();
                 if let Err(err) = callback(&realm.env()) {
                     // TODO global error handler
                     panic!("Callback errored {:?}", err)
@@ -144,6 +139,9 @@ async fn worker_thread_async(
             }
             JsWorkerEvent::Shutdown { resolve } => {
                 for (_id, realm) in realms {
+                    realm.context_scope.enter();
+                    realm.notify_shutdown();
+                    realm.drain_async_tasks().await;
                     realm.drain_async_tasks().await;
                 }
                 resolve.try_send(())?;

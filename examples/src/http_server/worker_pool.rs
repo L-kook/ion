@@ -28,13 +28,11 @@ impl WorkerPool {
         let (tx, rx) = channel();
 
         for i in 0..worker_count {
-            println!("[{}] Worker Started", i);
+            println!("[{}] Worker Started ({} Contexts)", i, contexts_per_worker);
 
             let worker = runtime.spawn_worker()?;
 
             for _ in 0..contexts_per_worker {
-                println!("[{}]─── Context Started", i);
-
                 let rx = rx.clone();
                 let worker = worker.clone();
 

@@ -44,6 +44,7 @@ impl ThreadSafeFunction {
                             map_arguments,
                             map_return,
                         } => {
+                            env.context_scope.enter();
                             let scope = &mut env.scope();
                             let func = v8::Local::new(scope, inner.clone());
                             let func = func.cast::<v8::Function>();
