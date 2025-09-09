@@ -9,6 +9,7 @@ use ion::*;
 use tokio::io::AsyncWriteExt;
 
 use crate::http_server::handlers::get_handler;
+use crate::http_server::worker_pool::WorkerPoolOptions;
 
 use self::http1::ResponseBuilderExt;
 use self::worker_pool::WorkerPool;
@@ -32,7 +33,14 @@ pub fn main() -> anyhow::Result<()> {
 
 async fn main_async(runtime: Arc<JsRuntime>) -> anyhow::Result<()> {
     // Spawn a pool of JavaScript worker threads. Load balance with round-robin
-    let workers = Arc::new(WorkerPool::new(&runtime, num_cpus::get_physical())?);
+    let workers = Arc::new(WorkerPool::new(WorkerPoolOptions {
+        runtime,
+        // How many threads to create
+        worker_count: num_cpus::get_physical(),
+        // How many JavaScript contexts to share that thread
+        // TODO: Increasing the count beyond 1 causes it to break
+        contexts_per_worker: 1,
+    })?);
 
     http1::http1_server("0.0.0.0:4200", move |req, res| {
         let workers = workers.clone();

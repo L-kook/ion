@@ -1,8 +1,16 @@
+use std::sync::Arc;
+
 use ion::utils::channel::Sender;
 use ion::utils::channel::channel;
 use ion::utils::channel::oneshot;
 use ion::*;
 use tokio::task::JoinHandle;
+
+pub struct WorkerPoolOptions {
+    pub runtime: Arc<JsRuntime>,
+    pub worker_count: usize,
+    pub contexts_per_worker: usize,
+}
 
 // Basic load balancer, round robin
 pub struct WorkerPool {
@@ -11,28 +19,37 @@ pub struct WorkerPool {
 
 impl WorkerPool {
     pub fn new(
-        runtime: &JsRuntime,
-        worker_count: usize,
+        WorkerPoolOptions {
+            runtime,
+            worker_count,
+            contexts_per_worker,
+        }: WorkerPoolOptions
     ) -> anyhow::Result<Self> {
         let (tx, rx) = channel();
 
-        for i in 0..(worker_count * 2) {
+        for i in 0..worker_count {
             println!("[{}] Worker Started", i);
 
-            let rx = rx.clone();
             let worker = runtime.spawn_worker()?;
 
-            let _handle: JoinHandle<anyhow::Result<()>> = tokio::task::spawn(async move {
-                let ctx = worker.create_context()?;
+            for _ in 0..contexts_per_worker {
+                println!("[{}]─── Context Started", i);
 
-                while let Ok(callback) = rx.recv_async().await {
-                    if ctx.exec(callback).is_err() {
-                        eprintln!("Error communicating with JavaScript")
+                let rx = rx.clone();
+                let worker = worker.clone();
+
+                let _handle: JoinHandle<anyhow::Result<()>> = tokio::task::spawn(async move {
+                    let ctx = worker.create_context()?;
+
+                    while let Ok(callback) = rx.recv_async().await {
+                        if ctx.exec(callback).is_err() {
+                            eprintln!("Error communicating with JavaScript")
+                        }
                     }
-                }
 
-                Ok(())
-            });
+                    Ok(())
+                });
+            }
         }
 
         Ok(Self { queue: tx })
