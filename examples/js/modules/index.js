@@ -3,8 +3,6 @@ import { b as _b } from './b.js'
 import { c as _c1 } from './a.js'
 import { c as _c2 } from './b.js'
 
-// console.log(a)
-
 export const a = _a
 export const b = _b
 export const c1 = _c1

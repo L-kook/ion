@@ -1,3 +1,4 @@
+mod handlers;
 mod http1;
 mod worker_pool;
 
@@ -7,10 +8,10 @@ use ion::utils::channel::channel;
 use ion::*;
 use tokio::io::AsyncWriteExt;
 
+use crate::http_server::handlers::get_handler;
+
 use self::http1::ResponseBuilderExt;
 use self::worker_pool::WorkerPool;
-
-const HANDLER: &str = include_str!("../../js/faas-handlers/index.handler.js");
 
 pub fn main() -> anyhow::Result<()> {
     // Start the runtime from the main thread
@@ -33,16 +34,18 @@ async fn main_async(runtime: Arc<JsRuntime>) -> anyhow::Result<()> {
     // Spawn a pool of JavaScript worker threads. Load balance with round-robin
     let workers = Arc::new(WorkerPool::new(&runtime, num_cpus::get_physical()));
 
-    http1::http1_server("0.0.0.0:4200", move |_req, res| {
+    http1::http1_server("0.0.0.0:4200", move |req, res| {
         let workers = workers.clone();
         async move {
+            let route = get_handler(req.uri().path()).await?;
+
             // Spawn a JavaScript context on one of the worker threads
             let ctx = workers.create_context();
 
             // Convert JavaScript handler into a ThreadSafe Function
             let handler = ctx.exec_blocking(move |env| {
                 // Run Handler Script
-                let module = env.eval_module(HANDLER)?;
+                let module = env.eval_module(route)?;
                 let js_handler = module.get_named_property_unchecked::<JsFunction>("handler")?;
                 ThreadSafeFunction::new(&js_handler)
             })?;

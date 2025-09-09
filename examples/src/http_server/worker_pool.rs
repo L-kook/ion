@@ -40,7 +40,7 @@ impl WorkerPool {
 
     pub fn get_worker(&self) -> &JsWorker {
         let next = self.next_index();
-        println!("[{}] Worker Got Job", next);
+        // println!("[{}] Worker Got Job", next);
         &self.workers[next]
     }
 
