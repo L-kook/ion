@@ -55,6 +55,20 @@ impl JsWorker {
 
         Ok(Arc::new(JsContext { id, tx }))
     }
+
+    pub fn run_garbage_collection_for_testing(&self) -> crate::Result<()> {
+        let (tx, rx) = bounded(1);
+
+        if self
+            .tx
+            .send(JsWorkerEvent::RunGarbageCollectionForTesting { resolve: tx })
+            .is_err()
+        {
+            return Err(Error::WorkerInitializeError);
+        };
+
+        Ok(rx.recv()?)
+    }
 }
 
 impl Drop for JsWorker {

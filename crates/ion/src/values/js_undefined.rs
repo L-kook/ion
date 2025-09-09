@@ -49,7 +49,10 @@ impl FromJsValue for JsUndefined {
         env: &Env,
         value: Value,
     ) -> crate::Result<Self> {
-        Ok(Self { value, env: *env })
+        Ok(Self {
+            value,
+            env: env.clone(),
+        })
     }
 }
 

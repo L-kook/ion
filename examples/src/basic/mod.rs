@@ -1,7 +1,7 @@
 use ion::*;
 
 pub fn main() -> anyhow::Result<()> {
-    let runtime = JsRuntime::initialize_debug()?;
+    let runtime = JsRuntime::initialize_once()?;
 
     // Create an isolate running on a dedicated thread
     let worker = runtime.spawn_worker()?;

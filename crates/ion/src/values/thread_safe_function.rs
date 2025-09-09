@@ -32,7 +32,7 @@ impl ThreadSafeFunction {
         });
 
         env.spawn_local({
-            let env = *env;
+            let env = env.clone();
             async move {
                 let ref_count = RefCounter::new(1);
                 let mut can_shutdown = env.shutdown_has_run();

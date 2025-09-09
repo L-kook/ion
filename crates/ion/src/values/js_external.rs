@@ -47,7 +47,7 @@ impl<T> JsExternal<T> {
 
         Ok(Self {
             value: Value::from(value.cast()),
-            env: *env,
+            env: env.clone(),
             ptr,
             ref_count,
             _data: Default::default(),
@@ -69,7 +69,7 @@ impl<T> Clone for JsExternal<T> {
         println!("cloned Rust {}", self.ref_count.count() - 1);
         Self {
             value: self.value,
-            env: self.env,
+            env: self.env.clone(),
             ptr: self.ptr,
             ref_count: self.ref_count.clone(),
             _data: self._data,
@@ -106,7 +106,7 @@ impl<T> FromJsValue for JsExternal<T> {
         let ptr = external.value();
         Ok(Self {
             value,
-            env: *env,
+            env: env.clone(),
             ptr,
             ref_count: Default::default(),
             _data: Default::default(),

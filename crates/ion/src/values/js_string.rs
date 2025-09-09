@@ -24,7 +24,7 @@ impl JsString {
         let string = crate::utils::v8::v8_create_string(scope, text.as_ref())?;
         Ok(Self {
             value: Value::from(string.cast()),
-            env: *env,
+            env: env.clone(),
         })
     }
 
@@ -54,7 +54,10 @@ impl FromJsValue for JsString {
         env: &Env,
         value: Value,
     ) -> crate::Result<Self> {
-        Ok(Self { value, env: *env })
+        Ok(Self {
+            value,
+            env: env.clone(),
+        })
     }
 }
 

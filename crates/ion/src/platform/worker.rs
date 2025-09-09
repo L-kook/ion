@@ -51,6 +51,9 @@ pub(crate) enum JsWorkerEvent {
     Shutdown {
         resolve: Sender<()>,
     },
+    RunGarbageCollectionForTesting {
+        resolve: Sender<()>,
+    },
 }
 
 // Create a dedicated thread to host the isolate
@@ -145,6 +148,10 @@ async fn worker_thread_async(
                 }
                 resolve.try_send(())?;
                 break;
+            }
+            JsWorkerEvent::RunGarbageCollectionForTesting { resolve } => {
+                isolate.request_garbage_collection_for_testing(v8::GarbageCollectionType::Full);
+                resolve.try_send(())?;
             }
         }
     }

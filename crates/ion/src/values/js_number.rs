@@ -20,7 +20,10 @@ impl JsNumber {
 
         let local = v8::Integer::new_from_unsigned(scope, val);
         let value = Value::from(local.cast::<v8::Value>());
-        Ok(Self { value, env: *env })
+        Ok(Self {
+            value,
+            env: env.clone(),
+        })
     }
 
     pub fn from_i32(
@@ -31,7 +34,10 @@ impl JsNumber {
 
         let local = v8::Integer::new(scope, val);
         let value = Value::from(local.cast::<v8::Value>());
-        Ok(Self { value, env: *env })
+        Ok(Self {
+            value,
+            env: env.clone(),
+        })
     }
 
     pub fn from_f64(
@@ -42,7 +48,10 @@ impl JsNumber {
 
         let local = v8::Number::new(scope, val);
         let value = Value::from(local.cast::<v8::Value>());
-        Ok(Self { value, env: *env })
+        Ok(Self {
+            value,
+            env: env.clone(),
+        })
     }
 
     pub fn get_u32(&self) -> crate::Result<u32> {
@@ -91,7 +100,10 @@ impl FromJsValue for JsNumber {
         env: &Env,
         value: Value,
     ) -> crate::Result<Self> {
-        Ok(Self { value, env: *env })
+        Ok(Self {
+            value,
+            env: env.clone(),
+        })
     }
 }
 

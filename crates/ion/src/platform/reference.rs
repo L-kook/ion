@@ -67,7 +67,8 @@ impl Reference {
             drop(unsafe { Box::from_raw(address as *mut Reference) });
             cache_remove(address);
             if let Some(callback) = finalize_cb {
-                callback(unsafe { *env });
+                let env = unsafe { &*env }.clone();
+                callback(env);
             }
         }));
 
@@ -148,7 +149,7 @@ impl Reference {
         let finalize_cb = &mut reference.finalize_cb;
         let ownership = reference.ownership;
         if let Some(finalize_cb) = finalize_cb.take() {
-            finalize_cb(unsafe { *reference.env });
+            finalize_cb(unsafe { (*reference.env).clone() });
         }
 
         if ownership == ReferenceOwnership::Runtime {

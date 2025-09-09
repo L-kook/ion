@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::ffi::c_void;
 use std::path::Path;
 use std::rc::Rc;
@@ -13,7 +14,7 @@ use crate::platform::background_worker::BackgroundWorkerEvent;
 use crate::platform::module::Module;
 use crate::utils::generate_random_string;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone)]
 pub struct Env {
     pub(crate) isolate_ptr: *mut v8::Isolate,
     pub(crate) context: *mut v8::Local<'static, v8::Context>,
@@ -21,8 +22,8 @@ pub struct Env {
     pub(crate) async_tasks: *mut TaskTracker,
     pub(crate) background_tasks: *mut Sender<BackgroundWorkerEvent>,
     pub(crate) inner: *mut Env,
-    pub(crate) on_before_exit: *mut Vec<Rc<dyn 'static + Fn() -> crate::Result<()>>>,
-    pub(crate) shutdown_has_run: *mut bool,
+    pub(crate) on_before_exit: RefCell<Vec<Rc<dyn 'static + Fn() -> crate::Result<()>>>>,
+    pub(crate) shutdown_has_run: RefCell<bool>,
 }
 
 impl Env {
@@ -33,10 +34,10 @@ impl Env {
         async_tasks: *mut TaskTracker,
         background_tasks: *mut Sender<BackgroundWorkerEvent>,
     ) -> Box<Self> {
-        let on_before_exit = Vec::<Rc<dyn 'static + Fn() -> crate::Result<()>>>::new();
-        let on_before_exit = Box::into_raw(Box::new(on_before_exit));
+        let on_before_exit =
+            RefCell::new(Vec::<Rc<dyn 'static + Fn() -> crate::Result<()>>>::new());
 
-        let shutdown_has_run = Box::into_raw(Box::new(false));
+        let shutdown_has_run = RefCell::new(false);
 
         let mut env = Box::new(Env {
             isolate_ptr,
@@ -61,7 +62,7 @@ impl Env {
     ///
     /// Env only lives for as long as the v8::Context
     pub unsafe fn from_raw(r: *mut Env) -> Env {
-        unsafe { *r }
+        unsafe { (*r).clone() }
     }
 
     pub(crate) fn async_tasks(&self) -> &TaskTracker {
@@ -111,12 +112,15 @@ impl Env {
         &self,
         callback: impl 'static + Fn() -> crate::Result<()>,
     ) {
-        (*unsafe { &mut *self.shutdown_has_run }) = true;
-        (unsafe { &mut *self.on_before_exit }).push(Rc::new(callback));
+        let mut shutdown_has_run = self.shutdown_has_run.borrow_mut();
+        let mut on_before_exit = self.on_before_exit.borrow_mut();
+        (*shutdown_has_run) = true;
+        on_before_exit.push(Rc::new(callback));
     }
 
     pub fn shutdown_has_run(&self) -> bool {
-        unsafe { *self.shutdown_has_run }
+        let shutdown_has_run = self.shutdown_has_run.borrow();
+        shutdown_has_run.clone()
     }
 
     /// Send a task to a background thread
@@ -171,5 +175,12 @@ impl Env {
         _path: impl AsRef<Path>,
     ) -> crate::Result<()> {
         todo!()
+    }
+}
+
+impl Drop for Env {
+    fn drop(&mut self) {
+        // drop(unsafe { Box::from_raw(self.on_before_exit)});
+        // drop(unsafe { Box::from_raw(self.shutdown_has_run) });
     }
 }

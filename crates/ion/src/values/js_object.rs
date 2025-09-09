@@ -18,7 +18,7 @@ impl JsObject {
         let object = v8::Object::new(scope);
         Ok(Self {
             value: Value::from(object.cast::<v8::Value>()),
-            env: *env,
+            env: env.clone(),
         })
     }
 }
@@ -41,7 +41,10 @@ impl FromJsValue for JsObject {
         env: &Env,
         value: Value,
     ) -> crate::Result<Self> {
-        Ok(Self { value, env: *env })
+        Ok(Self {
+            value,
+            env: env.clone(),
+        })
     }
 }
 

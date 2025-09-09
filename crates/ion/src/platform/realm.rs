@@ -115,8 +115,9 @@ impl JsRealm {
     }
 
     pub fn notify_shutdown(&self) {
-        for on_before_exit in unsafe { &mut *self.env.on_before_exit }.iter_mut() {
-            drop(on_before_exit());
+        let mut on_before_exit = self.env.on_before_exit.borrow_mut();
+        while let Some(on_before_exit) = on_before_exit.pop() {
+            on_before_exit().unwrap();
         }
     }
 

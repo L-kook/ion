@@ -9,5 +9,5 @@ export function handler(req, res) {
     
     res.write("hello");
     res.write(" world");
-    res.close()
+    res.end()
 };

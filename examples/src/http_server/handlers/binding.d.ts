@@ -4,7 +4,7 @@ export interface Request {
     body: Reader;
 }
 
-export interface Response extends Writer, Closer {
+export interface Response extends Writer, Ender {
     headers(): Headers
     writeHead(status: number): Promise<void>
 }
@@ -22,7 +22,7 @@ export interface Reader {
     read(recv: Uint8Array): Promise<number | null>;
 }
 
-export interface Writer extends Closer {
+export interface Writer extends Ender {
     // Write writes bytes from the buffer to the underlying data stream.
     write(bytes: Array<number>): Promise<number>;
     // Write writes bytes from the buffer to the underlying data stream.
@@ -35,8 +35,8 @@ export interface Writer extends Closer {
     flush(): Promise<void>;
 }
 
-export interface Closer {
-    close(): Promise<void>
+export interface Ender {
+    end(): Promise<void>
 }
 
 declare global {

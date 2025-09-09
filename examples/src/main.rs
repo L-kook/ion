@@ -6,6 +6,7 @@ mod deferred;
 mod http_server;
 mod set_interval;
 mod set_timeout;
+mod testing;
 mod thread_safe_function;
 
 fn main() -> anyhow::Result<()> {
@@ -25,6 +26,10 @@ fn main() -> anyhow::Result<()> {
         "custom_extension" => custom_extension::main(),
         "http_server" => http_server::main(),
         "thread_safe_function" => thread_safe_function::main(),
+        "testing_memory_usage_worker" => testing::memory_usage_worker::main(),
+        "testing_memory_usage_context" => testing::memory_usage_context::main(),
+        "testing_multiple_workers" => testing::multiple_workers::main(),
+        "testing_multiple_contexts" => testing::multiple_contexts::main(),
         _ => Err(anyhow::anyhow!("No example for: \"{}\"", example)),
     }
 }

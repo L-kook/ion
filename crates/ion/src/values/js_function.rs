@@ -13,7 +13,7 @@ use crate::values::FromJsValue;
 use crate::values::JsValue;
 use crate::values::ToJsValue;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct JsFunction {
     pub(crate) value: Value,
     pub(crate) this: Option<Value>,
@@ -73,7 +73,7 @@ impl JsFunction {
         Ok(Self {
             value: Value::from(value.cast()),
             this: None,
-            env: *env,
+            env: env.clone(),
         })
     }
 
@@ -165,7 +165,7 @@ impl FromJsValue for JsFunction {
         Ok(Self {
             value,
             this: None,
-            env: *env,
+            env: env.clone(),
         })
     }
 }

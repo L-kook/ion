@@ -15,3 +15,5 @@ hyper-util.workspace = true
 futures.workspace = true
 tokio-util.workspace = true
 num_cpus.workspace = true
+memory-stats.workspace = true
+parking_lot.workspace = true
