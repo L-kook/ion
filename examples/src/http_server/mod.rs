@@ -32,23 +32,23 @@ pub fn main() -> anyhow::Result<()> {
 
 async fn main_async(runtime: Arc<JsRuntime>) -> anyhow::Result<()> {
     // Spawn a pool of JavaScript worker threads. Load balance with round-robin
-    let workers = Arc::new(WorkerPool::new(&runtime, num_cpus::get_physical()));
+    let workers = Arc::new(WorkerPool::new(&runtime, num_cpus::get_physical())?);
 
     http1::http1_server("0.0.0.0:4200", move |req, res| {
         let workers = workers.clone();
         async move {
             let route = get_handler(req.uri().path()).await?;
 
-            // Spawn a JavaScript context on one of the worker threads
-            let ctx = workers.create_context();
-
             // Convert JavaScript handler into a ThreadSafe Function
-            let handler = ctx.exec_blocking(move |env| {
-                // Run Handler Script
-                let module = env.eval_module(route)?;
-                let js_handler = module.get_named_property_unchecked::<JsFunction>("handler")?;
-                ThreadSafeFunction::new(&js_handler)
-            })?;
+            let handler = workers
+                .exec_async(move |env| {
+                    // Run Handler Script
+                    let module = env.eval_module(route)?;
+                    let js_handler =
+                        module.get_named_property_unchecked::<JsFunction>("handler")?;
+                    ThreadSafeFunction::new(&js_handler)
+                })
+                .await?;
 
             let (tx, rx) = channel::<HttpEvent>();
 
