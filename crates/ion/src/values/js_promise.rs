@@ -1,6 +1,6 @@
-use parking_lot::Mutex;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-// TODO
 use crate::Env;
 use crate::JsFunction;
 use crate::JsUnknown;
@@ -36,39 +36,67 @@ impl JsPromise {
         + Sync
         + FnOnce(&Env, JsPromiseResult<Resolved>) -> crate::Result<()>,
     ) -> crate::Result<()> {
+        // RefCell<Option> ensures callback is only called once
         #[allow(clippy::type_complexity)]
-        let settled_callback: Mutex<
-            Option<
-                Box<
-                    dyn 'static
-                        + Send
-                        + Sync
-                        + FnOnce(&Env, JsPromiseResult<Resolved>) -> crate::Result<()>,
+        let settled_callback: Rc<
+            RefCell<
+                Option<
+                    Box<
+                        dyn 'static
+                            + Send
+                            + Sync
+                            + FnOnce(&Env, JsPromiseResult<Resolved>) -> crate::Result<()>,
+                    >,
                 >,
             >,
-        > = Mutex::new(Some(Box::new(settled_callback)));
+        > = Rc::new(RefCell::new(Some(Box::new(settled_callback))));
 
         let scope = &mut self.env.scope();
 
+        // Promise
         let promise = sys::v8_value_cast::<v8::Object, _>(self.value);
+
+        // Promise.then
         let then_key = v8_create_string(scope, "then")?;
         let Some(then) = promise.get(scope, sys::v8_value_cast::<v8::Value, _>(then_key)) else {
             return Err(crate::Error::ValueGetError);
         };
         let then_fn = sys::v8_value_cast::<v8::Function, _>(then);
 
-        let then_fn_recv = JsFunction::new(&self.env, move |env, ctx| {
+        let then_fn_recv = JsFunction::new(&self.env, {
+            let settled_callback = Rc::clone(&settled_callback);
+            move |env, ctx| {
+                let settled_callback = {
+                    let mut settled_callback = settled_callback.borrow_mut();
+                    settled_callback.take().unwrap()
+                };
+                let result = ctx.arg::<JsUnknown>(0)?;
+                let result = Resolved::from_js_value(env, *result.value())?;
+                let result = JsPromiseResult::<Resolved>::Resolved(result);
+                settled_callback(env, result)
+            }
+        })?;
+
+        // Promise.catch
+        let catch_key = v8_create_string(scope, "catch")?;
+        let Some(catch) = promise.get(scope, sys::v8_value_cast::<v8::Value, _>(catch_key)) else {
+            return Err(crate::Error::ValueGetError);
+        };
+        let catch_fn = sys::v8_value_cast::<v8::Function, _>(catch);
+
+        let catch_fn_recv = JsFunction::new(&self.env, move |env, ctx| {
             let settled_callback = {
-                let mut settled_callback = settled_callback.lock();
+                let mut settled_callback = settled_callback.borrow_mut();
                 settled_callback.take().unwrap()
             };
             let result = ctx.arg::<JsUnknown>(0)?;
-            let result = Resolved::from_js_value(env, *result.value())?;
-            let result = JsPromiseResult::<Resolved>::Resolved(result);
+            let result = JsPromiseResult::Rejected(result);
             settled_callback(env, result)
         })?;
 
+        // Call Promise.then & Promise.catch
         then_fn.call(scope, promise.into(), &[then_fn_recv.value]);
+        catch_fn.call(scope, promise.into(), &[catch_fn_recv.value]);
 
         Ok(())
     }
