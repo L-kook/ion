@@ -4,10 +4,12 @@ mod custom_extension;
 mod custom_resolver;
 mod deferred;
 mod http_server;
+mod promise;
 mod set_interval;
 mod set_timeout;
 mod testing;
 mod thread_safe_function;
+mod thread_safe_promise;
 
 fn main() -> anyhow::Result<()> {
     let example = std::env::args()
@@ -26,6 +28,8 @@ fn main() -> anyhow::Result<()> {
         "custom_extension" => custom_extension::main(),
         "http_server" => http_server::main(),
         "thread_safe_function" => thread_safe_function::main(),
+        "thread_safe_promise" => thread_safe_promise::main(),
+        "promise" => promise::main(),
         "testing_memory_usage_worker" => testing::memory_usage_worker::main(),
         "testing_memory_usage_context" => testing::memory_usage_context::main(),
         "testing_memory_usage_value" => testing::memory_usage_value::main(),

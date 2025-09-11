@@ -12,6 +12,7 @@ mod js_undefined;
 mod js_unknown;
 mod root;
 pub mod thread_safe_function;
+pub mod thread_safe_promise;
 
 pub use common::*;
 pub use js_deferred::*;
@@ -26,4 +27,5 @@ pub use js_string::*;
 pub use js_undefined::*;
 pub use js_unknown::*;
 pub use root::*;
-pub use thread_safe_function::ThreadSafeFunction;
+pub use thread_safe_function::*;
+pub use thread_safe_promise::*;
