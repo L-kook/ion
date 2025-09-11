@@ -1,6 +1,6 @@
 use crate::Env;
 use crate::ToJsValue;
-use crate::platform::Value;
+use crate::platform::sys::Value;
 
 pub trait JsValuesTupleIntoVec {
     fn into_vec(

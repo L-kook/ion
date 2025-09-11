@@ -12,21 +12,16 @@ pub fn main() -> anyhow::Result<()> {
     let runtime = JsRuntime::initialize_debug()?;
     println!("[1] {:?}", memu);
 
-    for i in 0..50 {
-        {
-            let worker = runtime.spawn_worker()?;
+    let worker = runtime.spawn_worker()?;
+    let ctx = worker.create_context()?;
 
-            {
-                let ctx0 = worker.create_context()?;
-                let ctx1 = worker.create_context()?;
-
-                drop(ctx0);
-                drop(ctx1);
-            };
-
-            worker.run_garbage_collection_for_testing()?;
-            drop(worker);
-        };
+    for i in 2..50 {
+        for _ in 2..100 {
+            let _value = ctx.exec_blocking(|env| {
+                let value = env.eval_script::<JsNumber>("1 + 1")?;
+                value.get_u32()
+            })?;
+        }
 
         println!("[{}] {:?}", i, memu);
         thread::sleep(Duration::from_millis(100));

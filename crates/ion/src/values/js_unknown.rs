@@ -1,6 +1,6 @@
 use crate::Env;
 use crate::ToJsUnknown;
-use crate::platform::Value;
+use crate::platform::sys::Value;
 use crate::utils::v8::v8_create_undefined;
 use crate::values::FromJsValue;
 use crate::values::JsValue;
@@ -26,10 +26,7 @@ impl JsUnknown {
 
     pub fn type_of(&self) -> String {
         let scope = &mut self.env.scope();
-        self.value
-            .inner()
-            .type_of(scope)
-            .to_rust_string_lossy(scope)
+        self.value.type_of(scope).to_rust_string_lossy(scope)
     }
 }
 
@@ -73,6 +70,6 @@ impl ToJsValue for () {
     ) -> crate::Result<Value> {
         let scope = &mut env.scope();
         let local = v8_create_undefined(scope)?;
-        Ok(Value::from(local))
+        Ok(local)
     }
 }

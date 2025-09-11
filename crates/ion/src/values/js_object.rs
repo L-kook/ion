@@ -1,6 +1,7 @@
 use crate::Env;
 use crate::ToJsUnknown;
-use crate::platform::Value;
+use crate::platform::sys;
+use crate::platform::sys::Value;
 use crate::values::FromJsValue;
 use crate::values::JsObjectValue;
 use crate::values::JsValue;
@@ -17,7 +18,7 @@ impl JsObject {
         let scope = &mut env.scope();
         let object = v8::Object::new(scope);
         Ok(Self {
-            value: Value::from(object.cast::<v8::Value>()),
+            value: sys::v8_from_value(object),
             env: env.clone(),
         })
     }

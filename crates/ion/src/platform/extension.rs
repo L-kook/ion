@@ -40,10 +40,10 @@ impl Extension {
                     // TEMP, use data or statics or something
                     {
                         let global_this = env.global_this()?;
-                        let global_this = global_this.value().inner().cast::<v8::Object>();
+                        let global_this = global_this.value().cast::<v8::Object>();
                         let key = v8::Integer::new(scope, v8_module.get_identity_hash().into());
-                        let value = exports.value().inner();
-                        global_this.set(scope, key.into(), value);
+                        let value = exports.value();
+                        global_this.set(scope, key.into(), *value);
                     };
 
                     // Initialize extension module
@@ -57,8 +57,8 @@ impl Extension {
                     scope.perform_microtask_checkpoint();
                     promise.result(scope);
 
-                    let module = module_map.get_module_mut(module_name).unwrap();
-                    module.status = ModuleStatus::Ready;
+                    let module = module_map.get_module(module_name).unwrap();
+                    module.update_status(ModuleStatus::Ready);
                 }
                 JsExtension::NativeModule {
                     module_name: _,
@@ -111,8 +111,8 @@ impl Extension {
                     scope.perform_microtask_checkpoint();
                     promise.result(scope);
 
-                    let module = module_map.get_module_mut(module_name).unwrap();
-                    module.status = ModuleStatus::Ready;
+                    let module = module_map.get_module(module_name).unwrap();
+                    module.update_status(ModuleStatus::Ready);
                 }
             }
         }

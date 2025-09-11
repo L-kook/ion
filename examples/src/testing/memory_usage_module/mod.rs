@@ -12,22 +12,19 @@ pub fn main() -> anyhow::Result<()> {
     let runtime = JsRuntime::initialize_debug()?;
     println!("[1] {:?}", memu);
 
-    for i in 0..50 {
-        {
-            let worker = runtime.spawn_worker()?;
+    let worker = runtime.spawn_worker()?;
 
-            {
-                let ctx0 = worker.create_context()?;
-                let ctx1 = worker.create_context()?;
+    for i in 2..50 {
+        let ctx = worker.create_context()?;
 
-                drop(ctx0);
-                drop(ctx1);
-            };
+        for _ in 2..1000 {
+            ctx.exec_blocking(|env| {
+                env.eval_module("export {}")?;
+                Ok(())
+            })?;
+        }
 
-            worker.run_garbage_collection_for_testing()?;
-            drop(worker);
-        };
-
+        worker.run_garbage_collection_for_testing()?;
         println!("[{}] {:?}", i, memu);
         thread::sleep(Duration::from_millis(100));
     }

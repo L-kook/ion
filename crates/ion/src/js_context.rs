@@ -103,9 +103,9 @@ impl Drop for JsContext {
 
         if self
             .tx
-            .send(JsWorkerEvent::ShutdownContext {
+            .send(JsWorkerEvent::RequestContextShutdown {
                 id: self.id,
-                resolve: tx,
+                resolve: Some(tx),
             })
             .is_err()
         {

@@ -1,60 +1,58 @@
 use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use flume::Sender;
-use tokio_util::task::TaskTracker;
 
+use crate::AsyncEnv;
 use crate::FromJsValue;
 use crate::JsObject;
 use crate::platform::JsRealm;
-use crate::platform::Value;
-use crate::platform::background_worker::BackgroundWorkerEvent;
+use crate::platform::background_worker::BackgroundTaskManager;
+use crate::platform::finalizer_registry::FinalizerRegistery;
 use crate::platform::module::Module;
-use crate::platform::v8::RawContext;
-use crate::platform::v8::RawContextScope;
-use crate::platform::v8::RawGlobal;
-use crate::platform::v8::RawIsolate;
+use crate::platform::sys;
+use crate::platform::worker::JsWorkerEvent;
+use crate::utils::RefCounter;
 use crate::utils::generate_random_string;
 
 #[derive(Clone)]
 pub struct Env {
     pub(crate) inner: *mut Env,
-    pub(crate) isolate: Rc<RawIsolate>,
-    pub(crate) context: Rc<RawContext>,
-    pub(crate) context_scope: Rc<RawContextScope>,
-    pub(crate) global_this: Rc<RawGlobal>,
-    pub(crate) on_before_exit: RefCell<Vec<Rc<dyn 'static + Fn() -> crate::Result<()>>>>,
-    pub(crate) shutdown_has_run: RefCell<bool>,
-    // TODO make these refcells
-    pub(crate) async_tasks: *mut TaskTracker,
-    pub(crate) background_tasks: *mut Sender<BackgroundWorkerEvent>,
+    pub(crate) realm_id: usize,
+    pub(crate) isolate: *mut v8::Isolate,
+    pub(crate) context: sys::__v8_context,
+    pub(crate) global_this: sys::__v8_global_this,
+    pub(crate) background_task_manager: Arc<BackgroundTaskManager>,
+    pub(crate) global_refs: RefCounter,
+    pub(crate) shutdown_requested: Rc<RefCell<bool>>,
+    pub(crate) tx: Sender<JsWorkerEvent>,
+    pub(crate) finalizer_registry: FinalizerRegistery,
 }
 
 impl Env {
     pub(crate) fn new(
-        isolate: Rc<RawIsolate>,
-        context: Rc<RawContext>,
-        context_scope: Rc<RawContextScope>,
-        global_this: Rc<RawGlobal>,
-        async_tasks: *mut TaskTracker,
-        background_tasks: *mut Sender<BackgroundWorkerEvent>,
+        isolate: *mut v8::Isolate,
+        context: sys::__v8_context,
+        global_this: sys::__v8_global_this,
+        background_task_manager: Arc<BackgroundTaskManager>,
+        global_refs: RefCounter,
+        shutdown_requested: Rc<RefCell<bool>>,
+        tx: Sender<JsWorkerEvent>,
+        finalizer_registry: FinalizerRegistery,
     ) -> Box<Self> {
-        let on_before_exit =
-            RefCell::new(Vec::<Rc<dyn 'static + Fn() -> crate::Result<()>>>::new());
-
-        let shutdown_has_run = RefCell::new(false);
-
         let mut env = Box::new(Env {
+            realm_id: 0,
             isolate,
             context,
-            context_scope,
             global_this,
-            async_tasks,
-            background_tasks,
+            background_task_manager,
             inner: std::ptr::null_mut(),
-            on_before_exit,
-            shutdown_has_run,
+            global_refs,
+            shutdown_requested,
+            finalizer_registry,
+            tx,
         });
 
         env.inner = env.as_mut() as *mut Env;
@@ -72,66 +70,68 @@ impl Env {
         unsafe { (*r).clone() }
     }
 
-    pub(crate) fn async_tasks(&self) -> &TaskTracker {
-        unsafe { &mut *self.async_tasks }
+    /// Incrementing the ref count prevents the context
+    /// associated with this Env from being destroyed.
+    ///
+    /// A ref count of 0 means it's safe to shutdown the context.
+    /// This is used for keeping the context open when there are
+    /// async tasks running in the background.
+    pub fn inc_ref(&self) {
+        self.global_refs.inc();
     }
 
-    pub(crate) fn background_tasks(&self) -> &Sender<BackgroundWorkerEvent> {
-        unsafe { &mut *self.background_tasks }
+    pub fn dec_ref(&self) {
+        self.global_refs.dec();
+        let shutdown_requested = {
+            let shutdown_requested = self.shutdown_requested.borrow();
+            *shutdown_requested
+        };
+
+        if self.global_refs.count() == 0 && shutdown_requested {
+            self.tx
+                .try_send(JsWorkerEvent::RequestContextShutdown {
+                    id: self.realm_id,
+                    resolve: None,
+                })
+                .unwrap();
+        }
+    }
+
+    pub fn ref_count(&self) -> usize {
+        self.global_refs.count()
+    }
+
+    pub fn as_async(&self) -> Arc<AsyncEnv> {
+        Arc::new(AsyncEnv {
+            tx: self.tx.clone(),
+            realm_id: self.realm_id.clone(),
+        })
     }
 
     pub fn isolate(&mut self) -> &mut v8::Isolate {
         // SAFETY: Lifetime of `Isolate` is longer than `Env`.
-        self.isolate.as_mut()
+        unsafe { &mut *self.isolate }
     }
 
     pub fn global_this(&self) -> crate::Result<JsObject> {
-        let v = self.global_this.as_inner();
-        JsObject::from_js_value(self, Value::from(v.cast()))
+        let v = sys::v8_get_global_this(self.global_this);
+        JsObject::from_js_value(self, sys::v8_from_value(v))
     }
 
     pub fn context(&self) -> v8::Local<'static, v8::Context> {
-        self.context.as_inner()
+        sys::v8_get_context(self.context)
     }
 
     pub fn scope(&self) -> v8::CallbackScope<'static> {
-        let context = self.context.as_inner();
+        let context = sys::v8_get_context(self.context);
         unsafe { v8::CallbackScope::new(context) }
     }
 
-    /// Non blocking action on the current thread.
-    /// Note: [`v8::HandleScope`]s don't survive a call to ".await"
-    pub fn spawn_local(
-        &self,
-        fut: impl 'static + Future<Output = crate::Result<()>>,
-    ) -> crate::Result<()> {
-        self.async_tasks().spawn_local(fut);
-        Ok(())
-    }
-
-    pub fn on_before_exit(
-        &self,
-        callback: impl 'static + Fn() -> crate::Result<()>,
-    ) {
-        let mut shutdown_has_run = self.shutdown_has_run.borrow_mut();
-        let mut on_before_exit = self.on_before_exit.borrow_mut();
-        (*shutdown_has_run) = true;
-        on_before_exit.push(Rc::new(callback));
-    }
-
-    pub fn shutdown_has_run(&self) -> bool {
-        let shutdown_has_run = self.shutdown_has_run.borrow();
-        shutdown_has_run.clone()
-    }
-
-    /// Send a task to a background thread
     pub fn spawn_background(
         &self,
         fut: impl 'static + Send + Sync + Future<Output = crate::Result<()>>,
     ) -> crate::Result<()> {
-        self.background_tasks()
-            .try_send(BackgroundWorkerEvent::ExecFut(Box::pin(fut)))?;
-        Ok(())
+        self.background_task_manager.spawn(fut)
     }
 
     pub fn eval_script<Return: FromJsValue>(
@@ -152,13 +152,14 @@ impl Env {
             panic!();
         };
 
-        Return::from_js_value(self, Value::from(value))
+        Return::from_js_value(self, sys::v8_from_value(value))
     }
 
     pub fn eval_module(
         &self,
         code: impl AsRef<str>,
     ) -> crate::Result<JsObject> {
+        // TODO cache a module based on its content hash otherwise it will leak
         let scope = &mut self.scope();
         let realm = JsRealm::v8_revive(scope);
 
@@ -167,7 +168,7 @@ impl Env {
         let v8_module = Module::v8_run_module(true, realm, module.name.clone(), module)?;
         let v8_module = v8_module.get_module_namespace().cast::<v8::Object>();
 
-        JsObject::from_js_value(self, Value::from(v8_module.cast()))
+        JsObject::from_js_value(self, sys::v8_from_value(v8_module))
     }
 
     /// Load a file and evaluate it
@@ -176,12 +177,5 @@ impl Env {
         _path: impl AsRef<Path>,
     ) -> crate::Result<()> {
         todo!()
-    }
-}
-
-impl Drop for Env {
-    fn drop(&mut self) {
-        // drop(unsafe { Box::from_raw(self.on_before_exit)});
-        // drop(unsafe { Box::from_raw(self.shutdown_has_run) });
     }
 }

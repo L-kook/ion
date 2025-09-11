@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use crate::Env;
 use crate::ToJsUnknown;
-use crate::platform::Value;
+use crate::platform::sys;
+use crate::platform::sys::Value;
 use crate::values::FromJsValue;
 use crate::values::JsObjectValue;
 use crate::values::JsValue;
@@ -23,15 +24,16 @@ impl JsString {
         let scope = &mut env.scope();
         let string = crate::utils::v8::v8_create_string(scope, text.as_ref())?;
         Ok(Self {
-            value: Value::from(string.cast()),
+            value: sys::v8_from_value(string),
             env: env.clone(),
         })
     }
 
     pub fn get_string(&self) -> crate::Result<String> {
         let scope = &mut self.env.scope();
-        let local = self.value.inner();
-        let local = local.cast::<v8::String>();
+        let Ok(local) = self.value.try_cast::<v8::String>() else {
+            return Err(crate::Error::ValueCastError);
+        };
         Ok(local.to_rust_string_lossy(scope))
     }
 }
@@ -75,7 +77,7 @@ impl ToJsValue for String {
         env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(*JsString::new(env, val)?.value())
+        Ok(JsString::new(env, val)?.value().clone())
     }
 }
 
@@ -84,7 +86,7 @@ impl ToJsValue for &str {
         env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(*JsString::new(env, val)?.value())
+        Ok(JsString::new(env, val)?.value().clone())
     }
 }
 
@@ -93,7 +95,7 @@ impl ToJsValue for Rc<str> {
         env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(*JsString::new(env, val)?.value())
+        Ok(JsString::new(env, val)?.value().clone())
     }
 }
 
@@ -102,7 +104,7 @@ impl ToJsValue for Arc<str> {
         env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(*JsString::new(env, val)?.value())
+        Ok(JsString::new(env, val)?.value().clone())
     }
 }
 

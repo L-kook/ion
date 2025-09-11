@@ -3,9 +3,8 @@ use std::marker::PhantomData;
 
 use crate::Env;
 use crate::ToJsUnknown;
-use crate::platform::Reference;
-use crate::platform::ReferenceOwnership;
-use crate::platform::Value;
+use crate::platform::sys;
+use crate::platform::sys::Value;
 use crate::utils::RefCounter;
 use crate::values::FromJsValue;
 use crate::values::JsValue;
@@ -30,23 +29,17 @@ impl<T> JsExternal<T> {
         let ref_count = RefCounter::new(2);
 
         let value = v8::External::new(scope, ptr as _);
-        Reference::register_global_finalizer(
-            value,
-            env.into_raw(),
-            1,
-            ReferenceOwnership::Rust,
-            Some(Box::new({
-                let ref_count = ref_count.clone();
-                move |_| {
-                    if ref_count.dec() {
-                        drop(unsafe { Box::from_raw(ptr as *mut T) });
-                    }
+        env.finalizer_registry.register(&value.into(), {
+            let ref_count = ref_count.clone();
+            move || {
+                if ref_count.dec() {
+                    drop(unsafe { Box::from_raw(ptr as *mut T) });
                 }
-            })),
-        );
+            }
+        });
 
         Ok(Self {
-            value: Value::from(value.cast()),
+            value: sys::v8_from_value(value),
             env: env.clone(),
             ptr,
             ref_count,
@@ -55,8 +48,7 @@ impl<T> JsExternal<T> {
     }
 
     pub fn as_inner(&self) -> crate::Result<&T> {
-        let value = self.value.inner();
-        let value = value.cast::<v8::External>();
+        let value = self.value.cast::<v8::External>();
         let ptr = value.value();
         let data = unsafe { &*(ptr as *mut T) };
         Ok(data)
@@ -68,7 +60,7 @@ impl<T> Clone for JsExternal<T> {
         self.ref_count.inc();
         println!("cloned Rust {}", self.ref_count.count() - 1);
         Self {
-            value: self.value,
+            value: self.value.clone(),
             env: self.env.clone(),
             ptr: self.ptr,
             ref_count: self.ref_count.clone(),
@@ -102,7 +94,7 @@ impl<T> FromJsValue for JsExternal<T> {
         env: &Env,
         value: Value,
     ) -> crate::Result<Self> {
-        let external = value.inner().cast::<v8::External>();
+        let external = value.cast::<v8::External>();
         let ptr = external.value();
         Ok(Self {
             value,
@@ -119,6 +111,6 @@ impl<T> ToJsValue for JsExternal<T> {
         _env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(val.value)
+        Ok(val.value.clone())
     }
 }

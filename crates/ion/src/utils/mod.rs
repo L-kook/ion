@@ -5,6 +5,7 @@ mod os_string_ext;
 mod path_ext;
 pub mod random_string;
 pub mod ref_counter;
+pub mod ref_counter_atomic;
 pub mod tokio_ext;
 pub mod v8;
 
@@ -14,3 +15,4 @@ pub use debug::*;
 pub use hash_map_ext::*;
 pub use random_string::*;
 pub use ref_counter::*;
+pub use ref_counter_atomic::*;

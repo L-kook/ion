@@ -1,4 +1,5 @@
 #![deny(unused_crate_dependencies)]
+mod async_env;
 mod env;
 mod error;
 pub mod extensions;
@@ -15,6 +16,7 @@ pub mod resolvers;
 pub mod utils;
 pub mod values;
 
+pub use async_env::*;
 pub use env::*;
 pub use error::*;
 pub use js_context::*;

@@ -1,6 +1,6 @@
 use crate::Env;
 use crate::JsUnknown;
-use crate::platform::Value;
+use crate::platform::sys::Value;
 
 pub trait FromJsValue: Sized {
     /// this function called to convert JavaScript values to native rust values
@@ -16,7 +16,7 @@ pub trait JsValue: Sized + FromJsValue {
 
     fn type_of(&self) -> String {
         let scope = &mut self.env().scope();
-        let type_of = self.value().inner().type_of(scope);
+        let type_of = self.value().type_of(scope);
         type_of.to_rust_string_lossy(scope)
     }
 }

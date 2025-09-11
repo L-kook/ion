@@ -5,9 +5,8 @@ use crate::JsObject;
 use crate::JsObjectValue;
 use crate::JsValuesTupleIntoVec;
 use crate::ToJsUnknown;
-use crate::platform::Reference;
-use crate::platform::ReferenceOwnership;
-use crate::platform::Value;
+use crate::platform::sys;
+use crate::platform::sys::Value;
 use crate::utils::v8::v8_create_undefined;
 use crate::values::FromJsValue;
 use crate::values::JsValue;
@@ -36,14 +35,11 @@ impl JsFunction {
             callback,
         }));
         let external = v8::External::new(scope, callback as _);
-
-        Reference::register_global_finalizer(
-            external,
-            env.into_raw(),
-            1,
-            ReferenceOwnership::Rust,
-            Some(Box::new(move |_| drop(unsafe { Box::from_raw(callback) }))),
-        );
+        env.finalizer_registry.register(&external.into(), {
+            move || {
+                drop(unsafe { Box::from_raw(callback) });
+            }
+        });
 
         let value = v8::Function::builder(
             |_scope: &mut v8::HandleScope,
@@ -63,7 +59,7 @@ impl JsFunction {
                 let callback = &info.callback;
                 let result = callback(&env, ctx).unwrap();
                 let result = Return::to_js_value(&env, result).unwrap();
-                rv.set(result.inner());
+                rv.set(result);
             },
         )
         .data(external.into())
@@ -71,7 +67,7 @@ impl JsFunction {
         .unwrap();
 
         Ok(Self {
-            value: Value::from(value.cast()),
+            value: sys::v8_from_value(value),
             this: None,
             env: env.clone(),
         })
@@ -97,14 +93,13 @@ impl JsFunction {
         let args = args.into_vec(&self.env)?;
         let mut args_v8 = vec![];
         for arg in args {
-            args_v8.push(arg.inner());
+            args_v8.push(arg);
         }
 
-        let local = self.value.inner();
-        let local = local.cast::<v8::Function>();
+        let local = self.value.cast::<v8::Function>();
 
         let this = match &self.this {
-            Some(this) => this.inner(),
+            Some(this) => *this,
             None => v8_create_undefined(scope)?,
         };
 
@@ -113,8 +108,7 @@ impl JsFunction {
             None => v8_create_undefined(scope)?,
         };
 
-        let value = Value::from(result);
-        Return::from_js_value(&self.env, value)
+        Return::from_js_value(&self.env, result)
     }
 
     pub fn new_instance<Args>(
@@ -129,18 +123,16 @@ impl JsFunction {
         let args = args.into_vec(&self.env)?;
         let mut args_v8 = vec![];
         for arg in args {
-            args_v8.push(arg.inner());
+            args_v8.push(arg);
         }
 
-        let local = self.value.inner();
-        let local = local.cast::<v8::Function>();
+        let local = self.value.cast::<v8::Function>();
 
         let Some(result) = local.new_instance(scope, &args_v8) else {
             return Err(crate::Error::NewInstanceError);
         };
 
-        let value = Value::from(result.cast());
-        JsObject::from_js_value(&self.env, value)
+        JsObject::from_js_value(&self.env, sys::v8_from_value(result))
     }
 }
 
@@ -194,7 +186,7 @@ impl<'a> JsFunctionCallContext<'a> {
             return Err(crate::Error::OutOfBounds);
         }
         let Ok(i) = c_int::try_from(i);
-        let value = Value::from(self.args.get(i));
+        let value = sys::v8_into_static_value(self.args.get(i));
         let value = Arg::from_js_value(&unsafe { Env::from_raw(self.env) }, value)?;
         Ok(value)
     }
