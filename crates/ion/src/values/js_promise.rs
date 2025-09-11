@@ -95,8 +95,18 @@ impl JsPromise {
         })?;
 
         // Call Promise.then & Promise.catch
-        then_fn.call(scope, promise.into(), &[then_fn_recv.value]);
-        catch_fn.call(scope, promise.into(), &[catch_fn_recv.value]);
+        if then_fn
+            .call(scope, promise.into(), &[then_fn_recv.value])
+            .is_none()
+        {
+            return Err(crate::Error::FunctionCallError);
+        };
+        if catch_fn
+            .call(scope, promise.into(), &[catch_fn_recv.value])
+            .is_none()
+        {
+            return Err(crate::Error::FunctionCallError);
+        };
 
         Ok(())
     }

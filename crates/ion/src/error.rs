@@ -18,6 +18,7 @@ pub enum Error {
     ValueCreateError,
     ValueGetError,
     ValueCastError,
+    FunctionCallError,
     ScriptCompileError,
     ScriptRunError,
     ExecError,
