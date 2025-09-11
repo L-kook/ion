@@ -77,7 +77,7 @@ impl ToJsValue for String {
         env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(JsString::new(env, val)?.value().clone())
+        Ok(*JsString::new(env, val)?.value())
     }
 }
 
@@ -86,7 +86,7 @@ impl ToJsValue for &str {
         env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(JsString::new(env, val)?.value().clone())
+        Ok(*JsString::new(env, val)?.value())
     }
 }
 
@@ -95,7 +95,7 @@ impl ToJsValue for Rc<str> {
         env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(JsString::new(env, val)?.value().clone())
+        Ok(*JsString::new(env, val)?.value())
     }
 }
 
@@ -104,7 +104,7 @@ impl ToJsValue for Arc<str> {
         env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(JsString::new(env, val)?.value().clone())
+        Ok(*JsString::new(env, val)?.value())
     }
 }
 

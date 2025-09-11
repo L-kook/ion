@@ -98,7 +98,7 @@ impl JsRealm {
 
         let realm_ptr = realm.as_mut() as *mut JsRealm;
         let realm_id = realm_ptr as usize;
-        realm.env.realm_id = realm_id.clone();
+        realm.env.realm_id = realm_id;
 
         {
             // TODO use slot or data
@@ -136,7 +136,7 @@ impl JsRealm {
         fut: impl 'static + Send + Sync + Future<Output = crate::Result<()>>,
     ) -> crate::Result<()> {
         let tx = self.tx.clone();
-        let id = self.id.clone();
+        let id = self.id;
         self.background_task_manager.spawn(async move {
             if let Err(_error) = fut.await {
                 todo!("Missing global error handler")

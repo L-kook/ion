@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 use std::thread::JoinHandle;
-use std::usize;
 
 use flume::Receiver;
 use flume::Sender;
@@ -36,6 +35,7 @@ pub(crate) enum JsWorkerEvent {
     },
     Exec {
         id: usize,
+        #[allow(clippy::type_complexity)]
         callback: Box<dyn Send + FnOnce(&Env) -> crate::Result<()>>,
     },
     Import {
@@ -52,6 +52,7 @@ pub(crate) enum JsWorkerEvent {
 }
 
 // Create a dedicated thread to host the isolate
+#[allow(clippy::type_complexity)]
 pub(crate) fn start_js_worker_thread(
     background_task_manager: Arc<BackgroundTaskManager>,
     extensions: Vec<Arc<JsExtension>>,
@@ -113,14 +114,14 @@ fn worker_thread(
 
                 Extension::register_extensions(&realm, &extensions)?;
 
-                realms.insert(realm_id.clone(), realm);
+                realms.insert(realm_id, realm);
                 resolve.try_send((realm_id, tx.clone()))?;
             }
             JsWorkerEvent::RequestContextShutdown { id, resolve } => {
                 // Store shutdown resolvers for when the context is closed
                 if let Some(resolve) = resolve {
                     shutdown_context_senders
-                        .entry(id.clone())
+                        .entry(id)
                         .or_default()
                         .push(resolve);
                 }
@@ -173,7 +174,7 @@ fn worker_thread(
                 let realm = realms.try_get(&id)?;
                 active_context.set(realm.context);
 
-                if let Err(err) = callback(&realm.env()) {
+                if let Err(err) = callback(realm.env()) {
                     // TODO global error handler
                     panic!("Callback errored {:?}", err)
                 };

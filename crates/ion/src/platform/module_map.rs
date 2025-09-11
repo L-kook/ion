@@ -31,7 +31,7 @@ impl ModuleMap {
     ) -> Option<Rc<Module>> {
         let inner = self.inner.borrow();
         if let Some(module) = inner.get(id) {
-            return Some(Rc::clone(&module));
+            return Some(Rc::clone(module));
         }
         None
     }

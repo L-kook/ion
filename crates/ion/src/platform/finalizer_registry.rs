@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct FinalizerRegistery {
+    #[allow(clippy::type_complexity)]
     callbacks: Rc<RefCell<HashMap<usize, (v8::Weak<v8::Value>, Box<dyn FnOnce()>)>>>,
     isolate: *mut v8::Isolate,
 }
@@ -28,10 +29,8 @@ impl FinalizerRegistery {
             unsafe { &mut *self.isolate },
             value,
             Box::new({
-                let id = id.clone();
                 let callbacks = self.callbacks.clone();
                 move || {
-                    let id = id.clone();
                     let mut callbacks = callbacks.borrow_mut();
                     if let Some((_, callback)) = callbacks.remove(&id) {
                         callback();
@@ -41,7 +40,7 @@ impl FinalizerRegistery {
         );
 
         let mut callbacks = self.callbacks.borrow_mut();
-        callbacks.insert(id.clone(), (weak, callback));
+        callbacks.insert(id, (weak, callback));
         id
     }
 

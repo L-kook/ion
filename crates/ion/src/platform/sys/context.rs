@@ -8,8 +8,7 @@ pub fn v8_new_context(
     // Note: [`v8::Global::into_raw`] appears to have a memory leak
     let context_local = v8::Context::new(scope, Default::default());
     let context_global = v8::Global::new(unsafe { &mut *isolate }, context_local);
-    let context = Box::into_raw(Box::new(context_global));
-    context
+    Box::into_raw(Box::new(context_global))
 }
 
 pub fn v8_get_context(context: __v8_context) -> v8::Local<'static, v8::Context> {

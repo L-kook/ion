@@ -32,6 +32,7 @@ pub struct Env {
 }
 
 impl Env {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         isolate: *mut v8::Isolate,
         context: sys::__v8_context,
@@ -104,7 +105,7 @@ impl Env {
     pub fn as_async(&self) -> Arc<AsyncEnv> {
         Arc::new(AsyncEnv {
             tx: self.tx.clone(),
-            realm_id: self.realm_id.clone(),
+            realm_id: self.realm_id,
         })
     }
 

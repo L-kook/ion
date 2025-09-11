@@ -53,7 +53,7 @@ impl ActiveContext {
             handle_scope,
         ));
 
-        return true;
+        true
     }
 
     pub fn take(
@@ -62,9 +62,7 @@ impl ActiveContext {
         v8::ContextScope<'static, v8::HandleScope<'static>>,
         v8::HandleScope<'static, ()>,
     )> {
-        let Some((_id, context_scope, handle_scope)) = self.current.take() else {
-            return None;
-        };
+        let (_id, context_scope, handle_scope) = self.current.take()?;
         Some((
             sys::v8_drop_context_scope(context_scope),
             sys::v8_drop_root_scope(handle_scope),

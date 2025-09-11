@@ -116,7 +116,7 @@ impl ToJsValue for i32 {
         env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(JsNumber::from_i32(env, val)?.value().clone())
+        Ok(*JsNumber::from_i32(env, val)?.value())
     }
 }
 
@@ -125,7 +125,7 @@ impl ToJsValue for u32 {
         env: &Env,
         val: Self,
     ) -> crate::Result<Value> {
-        Ok(JsNumber::from_u32(env, val)?.value().clone())
+        Ok(*JsNumber::from_u32(env, val)?.value())
     }
 }
 
