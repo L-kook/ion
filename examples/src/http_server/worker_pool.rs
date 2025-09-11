@@ -14,6 +14,7 @@ pub struct WorkerPoolOptions {
 
 // Basic load balancer, round robin
 pub struct WorkerPool {
+    #[allow(clippy::type_complexity)]
     queue: Sender<Box<dyn 'static + Send + FnOnce(&Env) -> ion::Result<()>>>,
 }
 
