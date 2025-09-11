@@ -36,6 +36,7 @@ impl JsPromise {
         + Sync
         + FnOnce(&Env, JsPromiseResult<Resolved>) -> crate::Result<()>,
     ) -> crate::Result<()> {
+        #[allow(clippy::type_complexity)]
         let settled_callback: Mutex<
             Option<
                 Box<

@@ -47,7 +47,7 @@ impl ThreadSafeFunction {
         map_arguments: impl 'static + Send + Sync + FnOnce(&Env) -> crate::Result<Args>,
         map_return: impl 'static + Send + Sync + FnOnce(&Env, JsUnknown) -> crate::Result<()>,
     ) -> crate::Result<()> {
-        let inner = self.inner.clone();
+        let inner = self.inner;
 
         self.env.exec(move |env| {
             let scope = &mut env.scope();
@@ -61,8 +61,8 @@ impl ThreadSafeFunction {
             let recv = v8::undefined(scope);
             let ret = inner.call(scope, recv.into(), &arguments).unwrap();
 
-            let ret = JsUnknown::from_js_value(&env, ret)?;
-            map_return(&env, ret)?;
+            let ret = JsUnknown::from_js_value(env, ret)?;
+            map_return(env, ret)?;
 
             Ok(())
         })
@@ -100,7 +100,7 @@ impl ThreadSafeFunction {
     pub fn dec_ref(&self) -> crate::Result<()> {
         let previous = self.ref_count.fetch_sub(1, Ordering::Relaxed);
         if previous == 1 {
-            let inner = self.inner.clone();
+            let inner = self.inner;
             self.env.exec(move |env| {
                 let inner = inner as *mut v8::Global<v8::Function>;
                 drop(unsafe { Box::from_raw(inner) });
@@ -121,7 +121,7 @@ impl Clone for ThreadSafeFunction {
         Self {
             ref_count: Arc::clone(&self.ref_count),
             env: Arc::clone(&self.env),
-            inner: self.inner.clone(),
+            inner: self.inner,
         }
     }
 }
