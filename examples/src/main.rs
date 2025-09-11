@@ -1,3 +1,4 @@
+#![deny(unused_crate_dependencies)]
 mod basic;
 mod basic_async;
 mod custom_extension;
@@ -5,10 +6,12 @@ mod custom_resolver;
 mod deferred;
 mod http_server;
 mod promise;
+mod run;
 mod set_interval;
 mod set_timeout;
 mod testing;
 mod thread_safe_function;
+mod eval;
 mod thread_safe_promise;
 
 fn main() -> anyhow::Result<()> {
@@ -24,12 +27,14 @@ fn main() -> anyhow::Result<()> {
         "set_timeout" => set_timeout::main(),
         "custom_resolver" => custom_resolver::main(),
         "set_interval" => set_interval::main(),
+        "run" => run::main(),
         "deferred" => deferred::main(),
         "custom_extension" => custom_extension::main(),
         "http_server" => http_server::main(),
         "thread_safe_function" => thread_safe_function::main(),
         "thread_safe_promise" => thread_safe_promise::main(),
         "promise" => promise::main(),
+        "eval" => eval::main(),
         "testing_memory_usage_worker" => testing::memory_usage_worker::main(),
         "testing_memory_usage_context" => testing::memory_usage_context::main(),
         "testing_memory_usage_value" => testing::memory_usage_value::main(),

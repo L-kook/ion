@@ -28,7 +28,7 @@ pub fn main() -> anyhow::Result<()> {
                 // Map Args
                 |_env| Ok(42),
                 // Map Ret
-                move |_env, ret| Ok(ret.cast::<JsNumber>()?.get_u32()?),
+                move |_env, ret| ret.cast::<JsNumber>()?.get_u32(),
             )
             .unwrap();
 

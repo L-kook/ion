@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -175,8 +174,13 @@ impl Env {
     /// Load a file and evaluate it
     pub fn import(
         &self,
-        _path: impl AsRef<Path>,
+        specifier: impl AsRef<str>,
     ) -> crate::Result<()> {
-        todo!()
+        self.tx.try_send(JsWorkerEvent::Import {
+            id: self.realm_id,
+            specifier: specifier.as_ref().to_string(),
+        })?;
+
+        Ok(())
     }
 }

@@ -41,7 +41,6 @@ pub(crate) enum JsWorkerEvent {
     Import {
         id: usize,
         specifier: String,
-        resolve: Sender<()>,
     },
     RequestShutdown {
         resolve: Sender<()>,
@@ -186,19 +185,13 @@ fn worker_thread(
                     tx.try_send(JsWorkerEvent::RequestContextShutdown { id, resolve: None })?;
                 }
             }
-            JsWorkerEvent::Import {
-                id,
-                specifier,
-                resolve,
-            } => {
+            JsWorkerEvent::Import { id, specifier } => {
                 Module::v8_initialize(
                     true,
                     realms.try_get(&id)?,
                     &specifier,
                     std::env::current_dir()?.try_to_string()?,
                 )?;
-
-                resolve.try_send(())?;
             }
             JsWorkerEvent::RequestShutdown { resolve } => {
                 shutdown_senders.push(resolve);
@@ -234,11 +227,7 @@ impl std::fmt::Debug for JsWorkerEvent {
             Self::BackgroundTaskComplete { id } => write!(f, "BackgroundTaskComplete"),
             Self::RequestContextShutdown { id, resolve } => write!(f, "RequestContextShutdown"),
             Self::Exec { id, callback } => write!(f, "Exec"),
-            Self::Import {
-                id,
-                specifier,
-                resolve,
-            } => write!(f, "Import"),
+            Self::Import { id, specifier } => write!(f, "Import"),
             Self::RequestShutdown { resolve } => write!(f, "RequestShutdown"),
             Self::RunGarbageCollectionForTesting { resolve } => {
                 write!(f, "RunGarbageCollectionForTesting")

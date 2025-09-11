@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use flume::Sender;
 use flume::bounded;
 
@@ -7,7 +5,6 @@ use crate::Env;
 use crate::Error;
 use crate::JsUnknown;
 use crate::platform::worker::JsWorkerEvent;
-use crate::utils::PathExt;
 use crate::utils::channel::oneshot;
 
 /// This is a handle to a v8::Context
@@ -79,21 +76,10 @@ impl JsContext {
     /// Load a file and evaluate it
     pub fn import(
         &self,
-        path: impl AsRef<Path>,
+        specifier: impl AsRef<str>,
     ) -> crate::Result<()> {
-        let (tx, rx) = bounded(1);
-
-        self.tx.try_send(JsWorkerEvent::Import {
-            id: self.id,
-            specifier: path.as_ref().try_to_string()?,
-            resolve: tx,
-        })?;
-
-        if rx.recv().is_err() {
-            return Err(Error::ExecError);
-        };
-
-        Ok(())
+        let specifier = specifier.as_ref().to_string();
+        self.exec_blocking(move |env| env.import(specifier))
     }
 }
 

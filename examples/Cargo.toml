@@ -3,10 +3,12 @@ name = "ion_examples"
 version = "0.1.0"
 edition = "2024"
 
+[lints]
+workspace = true
+
 [dependencies]
 ion = { path = "../crates/ion" }
 anyhow.workspace = true
-v8.workspace = true
 tokio.workspace = true
 http.workspace = true
 http-body-util.workspace = true
@@ -16,4 +18,5 @@ futures.workspace = true
 tokio-util.workspace = true
 num_cpus.workspace = true
 memory-stats.workspace = true
+normalize-path.workspace = true
 parking_lot.workspace = true

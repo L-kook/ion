@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use ion::utils::PathExt;
 use ion::*;
 
 static CARGO_MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
@@ -19,7 +20,9 @@ pub fn main() -> anyhow::Result<()> {
     let entry_point = PathBuf::from(CARGO_MANIFEST_DIR)
         .join("js")
         .join("modules")
-        .join("index.js");
+        .join("index.js")
+        .try_to_string()?;
+
     ctx.import(&entry_point)?;
 
     Ok(())
