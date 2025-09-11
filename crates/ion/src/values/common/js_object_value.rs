@@ -1,4 +1,3 @@
-#![allow(unused)]
 use crate::platform::sys;
 
 use super::*;
@@ -104,7 +103,7 @@ pub trait JsObjectValue: JsValue {
     /// Check if the `Object` has the named property
     fn has_named_property<N: AsRef<str>>(
         &self,
-        name: N,
+        _name: N,
     ) -> crate::Result<bool> {
         todo!();
     }
@@ -145,7 +144,7 @@ pub trait JsObjectValue: JsValue {
     /// Check if the `Object` has the own property
     fn has_own_property(
         &self,
-        key: &str,
+        _key: &str,
     ) -> crate::Result<bool> {
         todo!();
     }
@@ -153,7 +152,7 @@ pub trait JsObjectValue: JsValue {
     /// The same as `has_own_property`, but accepts a `JsValue` as the property name.
     fn has_own_property_js<K>(
         &self,
-        key: K,
+        _key: K,
     ) -> crate::Result<bool>
     where
         K: JsValue,
@@ -164,7 +163,7 @@ pub trait JsObjectValue: JsValue {
     /// This API checks if the Object passed in has the named property.
     fn has_property(
         &self,
-        name: &str,
+        _name: &str,
     ) -> crate::Result<bool> {
         todo!();
     }
@@ -173,7 +172,7 @@ pub trait JsObjectValue: JsValue {
     /// So you can pass the `JsNumber` or `JsSymbol` as the property name.
     fn has_property_js<K>(
         &self,
-        name: K,
+        _name: K,
     ) -> crate::Result<bool>
     where
         K: JsValue,
@@ -214,8 +213,8 @@ pub trait JsObjectValue: JsValue {
     /// Set the element at the given index
     fn set_element<T>(
         &mut self,
-        index: u32,
-        value: T,
+        _index: u32,
+        _value: T,
     ) -> crate::Result<()>
     where
         T: JsValue,
@@ -226,7 +225,7 @@ pub trait JsObjectValue: JsValue {
     /// Check if the `Array` has the element at the given index
     fn has_element(
         &self,
-        index: u32,
+        _index: u32,
     ) -> crate::Result<bool> {
         todo!();
     }
@@ -234,7 +233,7 @@ pub trait JsObjectValue: JsValue {
     /// Delete the element at the given index
     fn delete_element(
         &mut self,
-        index: u32,
+        _index: u32,
     ) -> crate::Result<bool> {
         todo!();
     }
@@ -244,7 +243,7 @@ pub trait JsObjectValue: JsValue {
     /// If the `Object` is not an array, `ArrayExpected` error returned
     fn get_element<T>(
         &self,
-        index: u32,
+        _index: u32,
     ) -> crate::Result<T>
     where
         T: FromJsValue,
@@ -273,8 +272,8 @@ pub trait JsObjectValue: JsValue {
     /// the `T` will be dropped when this `Object` is finalized
     fn wrap<T: 'static>(
         &mut self,
-        native_object: T,
-        size_hint: Option<usize>,
+        _native_object: T,
+        _size_hint: Option<usize>,
     ) -> crate::Result<()> {
         todo!();
     }

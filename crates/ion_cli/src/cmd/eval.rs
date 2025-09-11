@@ -1,4 +1,5 @@
 use clap::Parser;
+use ion::*;
 
 #[derive(Debug, Parser)]
 pub struct EvalCommand {
@@ -7,19 +8,19 @@ pub struct EvalCommand {
 }
 
 pub fn main(command: EvalCommand) -> anyhow::Result<()> {
-    // let runtime = ion::platform::initialize_once()?;
+    let runtime = JsRuntime::initialize_once()?;
 
-    // let worker = runtime.spawn_worker()?;
-    // let ctx = worker.create_context()?;
+    runtime.register_extension(ion::extensions::console())?;
+    runtime.register_extension(ion::extensions::set_interval())?;
+    runtime.register_extension(ion::extensions::set_timeout())?;
 
-    // ctx.exec_blocking(|env| {
-    //     ion::exts::define_console(&env);
-    //     ion::exts::define_set_timeout(&env);
-    //     ion::exts::define_set_interval(&env);
+    let worker = runtime.spawn_worker()?;
+    let ctx = worker.create_context()?;
 
-    //     env.eval_script(command.code)?;
-    //     Ok(())
-    // })?;
+    ctx.exec_blocking(|env| {
+        env.eval_script::<JsUnknown>(command.code)?;
+        Ok(())
+    })?;
 
     Ok(())
 }

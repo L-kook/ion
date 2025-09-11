@@ -1,4 +1,3 @@
-#![allow(warnings)]
 use std::sync::Arc;
 
 use flume::Sender;
@@ -11,7 +10,6 @@ use crate::JsObject;
 use crate::JsObjectValue;
 use crate::JsUnknown;
 use crate::ThreadSafeFunction;
-use crate::platform::sys;
 use crate::platform::sys::Value;
 use crate::thread_safe_function;
 use crate::utils::channel::oneshot;
