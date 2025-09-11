@@ -4,6 +4,7 @@ mod basic_async;
 mod custom_extension;
 mod custom_resolver;
 mod deferred;
+mod eval;
 mod http_server;
 mod promise;
 mod run;
@@ -11,7 +12,6 @@ mod set_interval;
 mod set_timeout;
 mod testing;
 mod thread_safe_function;
-mod eval;
 mod thread_safe_promise;
 
 fn main() -> anyhow::Result<()> {
