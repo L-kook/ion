@@ -64,7 +64,7 @@ impl ThreadSafePromise {
         })
     }
 
-    /// Non blocking call to then/catch
+    /// Blocking call to then/catch
     pub fn settled_blocking<Resolved: FromJsValue + 'static, Return: 'static + Send + Sync>(
         self,
         settled_callback: impl 'static
@@ -80,6 +80,7 @@ impl ThreadSafePromise {
         Ok(rx.recv()?)
     }
 
+    /// Async blocking call to then/catch
     pub async fn settled_async<Resolved: FromJsValue + 'static, Return: 'static + Send + Sync>(
         self,
         settled_callback: impl 'static
