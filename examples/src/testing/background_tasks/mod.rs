@@ -16,8 +16,9 @@ pub fn main() -> anyhow::Result<()> {
     ctx.exec(|env| {
         env.inc_ref();
 
-        env.spawn_background(|env| {
-            Box::pin(async move {
+        env.spawn_background({
+            let env = env.as_async();
+            async move {
                 println!("Background Task Started");
                 tokio::time::sleep(Duration::from_secs(1)).await;
                 println!("Background Task Ended");
@@ -29,7 +30,7 @@ pub fn main() -> anyhow::Result<()> {
                 })
                 .await?;
                 Ok(())
-            })
+            }
         })?;
 
         Ok(())
