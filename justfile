@@ -68,8 +68,8 @@ build:
   cargo build {{profile_cargo}} {{target_cargo}}
   mkdir -p {{out_dir_dist}}
   cp {{join(out_dir, "ion_cli")}} {{join(out_dir_dist, "ion")}}
-  cp {{join(out_dir, "libion_c.so")}} {{join(out_dir_dist, "libion.so")}}
-  cp {{join(out_dir, "libion_c.a")}} {{join(out_dir_dist, "libion.a")}}
+  # cp {{join(out_dir, "libion_c.so")}} {{join(out_dir_dist, "libion.so")}}
+  # cp {{join(out_dir, "libion_c.a")}} {{join(out_dir_dist, "libion.a")}}
 
 [macos]
 build:
@@ -77,8 +77,8 @@ build:
   cargo build {{profile_cargo}} {{target_cargo}}
   mkdir -p {{out_dir_dist}}
   cp {{join(out_dir, "ion_cli")}} {{join(out_dir_dist, "ion")}}
-  cp {{join(out_dir, "libion_c.dylib")}} {{join(out_dir_dist, "libion.dylib")}}
-  cp {{join(out_dir, "libion_c.a")}} {{join(out_dir_dist, "libion.a")}}
+  # cp {{join(out_dir, "libion_c.dylib")}} {{join(out_dir_dist, "libion.dylib")}}
+  # cp {{join(out_dir, "libion_c.a")}} {{join(out_dir_dist, "libion.a")}}
 
 [windows]
 build:
@@ -86,8 +86,8 @@ build:
   cargo build {{profile_cargo}} {{target_cargo}}
   New-Item -force -type directory {{out_dir_dist}}
   Copy-Item {{join(out_dir, "ion_cli.exe")}} {{join(out_dir_dist, "ion.exe")}}
-  Copy-Item {{join(out_dir, "ion_c.dll")}} {{join(out_dir_dist, "ion.dll")}}
-  Copy-Item {{join(out_dir, "ion_c.lib")}} {{join(out_dir_dist, "ion.lib")}}
+  # Copy-Item {{join(out_dir, "ion_c.dll")}} {{join(out_dir_dist, "ion.dll")}}
+  # Copy-Item {{join(out_dir, "ion_c.lib")}} {{join(out_dir_dist, "ion.lib")}}
 
 run *ARGS:
   just build
