@@ -63,43 +63,7 @@ pub fn main() -> anyhow::Result<()> {
 
 ```
 
-### Async
-
-```rust
-use ion::*;
-
-pub fn main() -> anyhow::Result<()> {
-    let runtime = JsRuntime::initialize_once()?;
-
-    let worker = runtime.spawn_worker()?;
-    let ctx = worker.create_context()?;
-
-    ctx.exec_blocking(|env| {
-        // Spawn an future on the event loop
-        env.spawn_local({
-            let env = env.clone();
-            async move {
-                println!("Async Task Started");
-
-                let value = env.eval_script::<JsNumber>("1 + 1")?;
-
-                // Wait for some time
-                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-
-                println!("Async Task Returned: {}", value.get_u32()?);
-
-                Ok(())
-            }
-        })?;
-
-        Ok(())
-    })?;
-
-    Ok(())
-}
-```
-
-### Calling JavaScript from another Rust thread
+### Calling JavaScript from Rust
 
 ```rust
 use ion::*;
@@ -114,30 +78,65 @@ pub fn main() -> anyhow::Result<()> {
     ctx.eval_script("globalThis.add = (a, b) => a + b")
 
     // Execute some Rust code within the JavaScript realm
-    ctx.exec_blocking(|env| {
+    let add_handle = ctx.exec_blocking(|env| {
         let global_this = env.global_this()?;
         let function = global_this.get_named_property_unchecked::<JsFunction>("foo")?;
-
         // Create a reference counted thread safe handle to the function
-        let tsfn = ThreadSafeFunction::new(&function)?;
-
-        // Send that function into a thread and call it
-        thread::spawn(move || {
-            let ret: u32 = tsfn
-                .call_blocking(
-                    // Map Rust values to be used as JavaScript values
-                    |env| Ok((1, 1)), 
-                    // Map the return type to be used in Rust
-                    |env, ret| ret.cast::<JsNumber>()?.get_u32(),
-                )
-                .unwrap();
-
-            println!("JavaScript function returned: {}", ret); // "3"
-            thread::sleep(Duration::from_secs(1));
-        });
-
-        Ok(())
+        ThreadSafeFunction::new(&function)
     })?;
+
+    let ret: u32 = tsfn.call_blocking(
+        // Map Rust values to be used as JavaScript values
+        |env| Ok((1, 1)), 
+        // Map the return type to be used in Rust
+        |env, ret| ret.cast::<JsNumber>()?.get_u32(),
+    )?;
+
+    println!("JavaScript function returned: {}", ret); // "3"
+
+    Ok(())
+}
+```
+
+### Calling Rust from JavaScript
+
+```rust
+use ion::*;
+
+pub fn main() -> anyhow::Result<()> {
+    let runtime = JsRuntime::initialize_once()?;
+
+    runtime.register_extension(ion::extension::console())?;
+
+    let worker = runtime.spawn_worker()?;
+    let ctx = worker.create_context()?;
+
+    // Create an "add" function that does the operation in Rust
+    ctx.exec_blocking(|env| {
+        let add = JsFunction::new(env, |env, ctx| {
+            let a = ctx.args::<JsNumber>(0)?.get_u32()?;
+            let b = ctx.args::<JsNumber>(1)?.get_u32()?;
+
+            // Create a "oneshot" channel style promise
+            let (promise, deferred) = JsDeferred::new(env);
+
+            // Non blocking work running on a background thread
+            std::thread::spawn(move || {
+                let result = a + b;
+                deferred.resolve(move |_env| Ok(result)).unwrap()
+            });
+
+            // Return Promise back to JavaScript
+            Ok(promise)
+        })?;
+
+        let mut global_this = env.global_this()?;
+        global_this.set_named_property("add", add)?;
+        Ok(())
+    });
+
+    // Call the add function
+    ctx.eval_script("globalThis.add(1, 1).then(console.log)")?; // "2"
 
     Ok(())
 }

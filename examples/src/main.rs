@@ -1,6 +1,5 @@
 #![deny(unused_crate_dependencies)]
 mod basic;
-mod basic_async;
 mod custom_extension;
 mod custom_resolver;
 mod deferred;
@@ -23,7 +22,6 @@ fn main() -> anyhow::Result<()> {
 
     match example.as_str() {
         "basic" => basic::main(),
-        "basic_async" => basic_async::main(),
         "set_timeout" => set_timeout::main(),
         "custom_resolver" => custom_resolver::main(),
         "set_interval" => set_interval::main(),
