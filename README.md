@@ -269,14 +269,6 @@ A multi-threaded http server that calls into JavaScript to handle requests (lamb
 
 A multi-threaded bundler that calls into JavaScript to support plugins (Atlaspack)
 
-## Event Loop
+## Architecture
 
-The event loop is split into several “realms”.
-
-**Background thread,** shared by all JsWorkers and JsContexts. This thread never sees JavaScript values and is instead used to handle asynchronous tasks like managing timers, sockets, http-requests, file system events, etc. This is running a multi-threaded Tokio runtime.
-
-**“parent” JsWorker event-loop,** this is a local-thread asynchronous execution context that is shared/partitioned between each JsContext. This is running a local-thread Tokio runtime.
-
-**“child” JsContext event-loop,** this is a container of local asynchronous tasks associated with the JsContext. This allows the tasks associated with the JsContext to be tracked and cleaned-up when the JsContext is shut down without affecting other JsContexts running within the same JsWorker. This is using a shard of the parent’s local-thread Tokio runtime
-
-<img align="center" src=".docs/arch.png" />
+<img align="center" src=".docs/arch.jpg" />
