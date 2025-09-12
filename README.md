@@ -143,6 +143,54 @@ pub fn main() -> anyhow::Result<()> {
 }
 ```
 
+## Compatibility
+
+The Ion extensions will focus on compatibility with Web standards first. Nodejs compat may come later
+
+| API | Supported  | Notes |
+|-|-|-|
+| JSON | ✅ | |
+| setTimeout | ✅ | |
+| clearTimeout | ✅ | |
+| setInterval | ✅ | |
+| clearInterval | ✅ | |
+| console | ✅ | Basic partial implementation |
+| fetch | ✖️ | |
+| Response | ✖️ | |
+| Request | ✖️ | |
+| Headers | ✖️ | |
+| AbortController | ✖️ | |
+| AbortSignal | ✖️ | |
+| URL | ✖️ | |
+| URLSearchParams | ✖️ | |
+| Worker | ✖️ | |
+| self.postMessage | ✖️ | |
+| structuredClone | ✖️ | |
+| MessagePort | ✖️ | |
+| MessageChannel | ✖️ | |
+| BroadcastChannel | ✖️ | |
+| ReadableStream | ✖️ | |
+| WritableStream | ✖️ | |
+| TransformStream | ✖️ | |
+| Blob | ✖️ | |
+| WebSocket | ✖️ | |
+| atob | ✖️ | |
+| btoa | ✖️ | |
+| TextEncoder | ✖️ | |
+| TextDecoder | ✖️ | |
+| crypto | ✖️ | |
+| SubtleCrypto | ✖️ | |
+| CryptoKey | ✖️ | |
+| performance | ✖️ | |
+| reportError | ✖️ | |
+| queueMicrotask | ✖️ | |
+| EventTarget | ✖️ | |
+| Event | ✖️ | |
+| ErrorEvent | ✖️ | |
+| CloseEvent | ✖️ | |
+| MessageEvent | ✖️ | |
+
+
 ## What Is Ion?
 
 Ion is a JavaScript runtime targeting use cases where Rust applications need to embed a JavaScript runtime within them.
