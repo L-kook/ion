@@ -77,14 +77,14 @@ pub fn main() -> anyhow::Result<()> {
     // Create a function on the global scope
     ctx.eval_script("globalThis.add = (a, b) => a + b")
 
-    // Execute some Rust code within the JavaScript realm
+    // Create a thread safe handle to the JavaScript function
     let add_handle = ctx.exec_blocking(|env| {
         let global_this = env.global_this()?;
         let function = global_this.get_named_property_unchecked::<JsFunction>("foo")?;
-        // Create a reference counted thread safe handle to the function
         ThreadSafeFunction::new(&function)
     })?;
 
+    // Call JavaScript function
     let ret: u32 = tsfn.call_blocking(
         // Map Rust values to be used as JavaScript values
         |env| Ok((1, 1)), 
@@ -93,7 +93,6 @@ pub fn main() -> anyhow::Result<()> {
     )?;
 
     println!("JavaScript function returned: {}", ret); // "3"
-
     Ok(())
 }
 ```
