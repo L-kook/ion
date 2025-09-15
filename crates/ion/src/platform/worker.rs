@@ -11,6 +11,7 @@ use flume::unbounded;
 use crate::DynResolver;
 use crate::Env;
 use crate::JsExtension;
+use crate::JsTransformer;
 use crate::fs::FileSystem;
 use crate::platform::background_worker::BackgroundTaskManager;
 use crate::platform::sys;
@@ -56,6 +57,7 @@ pub(crate) fn start_js_worker_thread(
     background_task_manager: Arc<BackgroundTaskManager>,
     extensions: Vec<Arc<JsExtension>>,
     resolvers: Vec<DynResolver>,
+    transformers: HashMap<String, Arc<JsTransformer>>,
 ) -> (
     Sender<JsWorkerEvent>,
     Mutex<Option<JoinHandle<crate::Result<()>>>>,
@@ -65,7 +67,16 @@ pub(crate) fn start_js_worker_thread(
     // Start a thread for the Isolate
     let handle: JoinHandle<crate::Result<()>> = thread::spawn({
         let tx: Sender<JsWorkerEvent> = tx.clone();
-        move || worker_thread(tx, rx, background_task_manager, extensions, resolvers)
+        move || {
+            worker_thread(
+                tx,
+                rx,
+                background_task_manager,
+                extensions,
+                resolvers,
+                transformers,
+            )
+        }
     });
 
     (tx, Mutex::new(Some(handle)))
@@ -77,6 +88,7 @@ fn worker_thread(
     background_task_manager: Arc<BackgroundTaskManager>,
     extensions: Vec<Arc<JsExtension>>,
     resolvers: Vec<DynResolver>,
+    transformers: HashMap<String, Arc<JsTransformer>>,
 ) -> crate::Result<()> {
     let fs = FileSystem::Physical;
 
@@ -105,6 +117,7 @@ fn worker_thread(
                     isolate_ptr,
                     fs.clone(),
                     resolvers.clone(),
+                    transformers.clone(),
                     background_task_manager.clone(),
                     tx.clone(),
                 );

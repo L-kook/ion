@@ -5,14 +5,6 @@ use std::sync::Arc;
 use crate::fs::FileSystem;
 
 #[derive(Debug)]
-pub enum ResolverKind {
-    JavaScript,
-    TypeScript,
-    Json,
-    Other(String),
-}
-
-#[derive(Debug)]
 pub struct ResolverContext {
     pub fs: FileSystem,
     pub specifier: String,
@@ -23,7 +15,7 @@ pub struct ResolverContext {
 pub struct ResolverResult {
     pub code: Vec<u8>,
     pub path: PathBuf,
-    pub kind: ResolverKind,
+    pub kind: String,
 }
 
 pub(crate) type DynResolver = Arc<dyn Send + Sync + Fn(ResolverContext) -> DynResolverFut>;

@@ -29,6 +29,7 @@ pub enum Error {
     PromiseResolveError,
     BackgroundThreadError,
     FileNotFound(String),
+    NoTransformerError(String),
 }
 
 impl Error {

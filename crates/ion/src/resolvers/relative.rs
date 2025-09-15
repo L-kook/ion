@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use normalize_path::NormalizePath;
 
 use crate::ResolverContext;
-use crate::ResolverKind;
 use crate::ResolverResult;
 use crate::utils::OsStringExt;
 
@@ -19,16 +18,8 @@ pub async fn relative(ctx: ResolverContext) -> crate::Result<Option<ResolverResu
         return Ok(None);
     }
 
-    let kind = match specifier
-        .extension()
-        .map(|v| v.try_to_string().unwrap())
-        .as_deref()
-    {
-        Some("js") => ResolverKind::JavaScript,
-        Some("ts") => ResolverKind::TypeScript,
-        Some("json") => ResolverKind::Json,
-        Some(ext) => ResolverKind::Other(ext.to_string()),
-        None => return Err(crate::Error::ResolveError),
+    let Some(kind) = specifier.extension().map(|v| v.try_to_string().unwrap()) else {
+        return Err(crate::Error::ResolveError);
     };
 
     Ok(Some(ResolverResult {

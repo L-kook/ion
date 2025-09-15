@@ -7,5 +7,6 @@ pub mod memory_usage_value;
 pub mod memory_usage_worker;
 pub mod multiple_contexts;
 pub mod multiple_workers;
+pub mod transformers;
 
 pub use memory_usage::*;

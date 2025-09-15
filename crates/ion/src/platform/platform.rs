@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Mutex;
@@ -11,6 +12,7 @@ use flume::unbounded;
 
 use crate::DynResolver;
 use crate::JsExtension;
+use crate::JsTransformer;
 use crate::platform::background_worker::BackgroundTaskManager;
 use crate::platform::worker::JsWorkerEvent;
 use crate::platform::worker::start_js_worker_thread;
@@ -31,6 +33,10 @@ pub(crate) enum PlatformEvent {
         resolver: DynResolver,
         resolve: Sender<crate::Result<()>>,
     },
+    RegisterTransformer {
+        transformer: JsTransformer,
+        resolve: Sender<crate::Result<()>>,
+    },
 }
 
 pub(crate) static HAS_INIT: AtomicBool = AtomicBool::new(false);
@@ -45,6 +51,7 @@ pub(crate) static PLATFORM: LazyLock<Sender<PlatformEvent>> = LazyLock::new(|| {
 
         let mut extensions = Vec::<Arc<JsExtension>>::new();
         let mut resolvers = Vec::<DynResolver>::new();
+        let mut transformers = HashMap::<String, Arc<JsTransformer>>::new();
 
         while let Ok(event) = rx.recv() {
             match event {
@@ -73,6 +80,7 @@ pub(crate) static PLATFORM: LazyLock<Sender<PlatformEvent>> = LazyLock::new(|| {
                         background_task_manager.clone(),
                         extensions.clone(),
                         resolvers.clone(),
+                        transformers.clone(),
                     );
 
                     if resolve.try_send((tx, handle)).is_err() {
@@ -86,6 +94,13 @@ pub(crate) static PLATFORM: LazyLock<Sender<PlatformEvent>> = LazyLock::new(|| {
                 }
                 PlatformEvent::RegisterResolver { resolver, resolve } => {
                     resolvers.push(resolver);
+                    resolve.try_send(Ok(())).unwrap();
+                }
+                PlatformEvent::RegisterTransformer {
+                    transformer,
+                    resolve,
+                } => {
+                    transformers.insert(transformer.kind.clone(), Arc::new(transformer));
                     resolve.try_send(Ok(())).unwrap();
                 }
             }

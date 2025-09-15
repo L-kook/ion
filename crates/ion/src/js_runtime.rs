@@ -8,9 +8,8 @@ use flume::bounded;
 
 use crate::Error;
 use crate::JsExtension;
+use crate::JsTransformer;
 use crate::JsWorker;
-use crate::PreprocessorContext;
-use crate::PreprocessorResult;
 use crate::ResolverContext;
 use crate::ResolverResult;
 use crate::platform::platform::HAS_INIT;
@@ -101,11 +100,18 @@ impl JsRuntime {
 
     /// Hook that runs before code is loaded. This can be used to
     /// convert TypeScript into JavaScript or JSON into JavaScript
-    pub fn register_preprocessor(
+    pub fn register_transformer(
         &self,
-        _preprocessor: impl Fn(PreprocessorContext) -> crate::Result<PreprocessorResult>,
-    ) {
-        println!("Preprocessors not implemented yet")
+        transformer: JsTransformer,
+    ) -> crate::Result<()> {
+        let (tx, rx) = oneshot();
+
+        self.tx.try_send(PlatformEvent::RegisterTransformer {
+            transformer,
+            resolve: tx,
+        })?;
+
+        rx.recv()?
     }
 
     /// Hook that runs before code is imported. This can be used to

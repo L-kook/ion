@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use crate::JsValue;
 use crate::ResolverContext;
+use crate::TransformerContext;
 use crate::platform::JsRealm;
 use crate::platform::resolve::run_resolvers;
 use crate::utils::PathExt;
@@ -119,11 +120,21 @@ impl Module {
             return Err(crate::Error::FileNotFound(name.as_ref().to_string()));
         };
 
-        let module = Module::new(
-            realm,
-            result.path.try_to_string()?,
-            String::from_utf8(result.code)?,
-        )?;
+        let code = if result.kind != "js" {
+            let Some(transformer) = realm.transformers.get(&result.kind) else {
+                return Err(crate::Error::NoTransformerError(name.as_ref().to_string()));
+            };
+
+            let transform_result = (*transformer.transformer)(TransformerContext {
+                content: result.code,
+            })?;
+
+            transform_result.code
+        } else {
+            String::from_utf8(result.code)?
+        };
+
+        let module = Module::new(realm, result.path.try_to_string()?, code)?;
 
         let v8_module = module.v8_module();
         module_map.insert(module);

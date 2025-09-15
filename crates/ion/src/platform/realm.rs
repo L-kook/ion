@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -6,6 +7,7 @@ use flume::Sender;
 
 use crate::DynResolver;
 use crate::Env;
+use crate::JsTransformer;
 use crate::fs::FileSystem;
 use crate::platform::background_worker::BackgroundTaskManager;
 use crate::platform::finalizer_registry::FinalizerRegistery;
@@ -18,6 +20,7 @@ use crate::utils::channel::oneshot;
 // Container that constructs a V8 context and preserves the internals until dropped
 pub struct JsRealm {
     pub(crate) resolvers: Vec<DynResolver>,
+    pub(crate) transformers: HashMap<String, Arc<JsTransformer>>,
     pub(crate) fs: FileSystem,
     pub(crate) id: usize,
     pub(crate) env: Box<Env>,
@@ -38,6 +41,7 @@ impl JsRealm {
         isolate: *mut v8::Isolate,
         fs: FileSystem,
         resolvers: Vec<DynResolver>,
+        transformers: HashMap<String, Arc<JsTransformer>>,
         background_task_manager: Arc<BackgroundTaskManager>,
         tx: Sender<JsWorkerEvent>,
     ) -> Box<Self> {
@@ -87,6 +91,7 @@ impl JsRealm {
             background_task_manager,
             modules,
             resolvers,
+            transformers,
             global_refs,
             shutdown_requested,
             finalizer_registry,
