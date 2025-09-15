@@ -26,6 +26,10 @@ pub fn main() -> anyhow::Result<()> {
 
     runtime.register_resolver(ion::resolvers::relative)?;
 
+    runtime.register_transformer(ion::transformers::json())?;
+    runtime.register_transformer(ion::transformers::ts())?;
+    runtime.register_transformer(ion::transformers::tsx())?;
+
     runtime.register_extension(ion::extensions::console())?;
     runtime.register_extension(ion::extensions::set_interval())?;
     runtime.register_extension(ion::extensions::set_timeout())?;
