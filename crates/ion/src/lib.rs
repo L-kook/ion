@@ -1,4 +1,4 @@
-// #![deny(unused_crate_dependencies)]
+#![deny(unused_crate_dependencies)]
 mod async_env;
 mod env;
 mod error;
