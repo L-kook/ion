@@ -8,7 +8,6 @@ declare global {
     }
 }
 
-
 export default class Console {
     static log(/** @type {Array<any>} */ ...args: any[]) {
         import.meta.extension.log(...args);

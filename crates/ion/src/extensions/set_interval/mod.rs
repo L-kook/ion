@@ -17,6 +17,14 @@ use crate::utils::AtomicRefCounter;
 static MODULE_NAME: &str = "ion:timers/interval";
 static BINDING: &str = include_str!("./binding.ts");
 
+pub fn set_interval() -> JsExtension {
+    JsExtension::NativeModuleWithBinding {
+        module_name: MODULE_NAME.to_string(),
+        binding: BINDING.to_string(),
+        extension: Box::new(extension_hook),
+    }
+}
+
 fn extension_hook(
     env: &Env,
     exports: &mut JsObject,
@@ -90,12 +98,4 @@ fn extension_hook(
     )?;
 
     Ok(())
-}
-
-pub fn set_interval() -> JsExtension {
-    JsExtension::NativeModuleWithBinding {
-        module_name: MODULE_NAME.to_string(),
-        binding: BINDING.to_string(),
-        extension: Box::new(extension_hook),
-    }
 }

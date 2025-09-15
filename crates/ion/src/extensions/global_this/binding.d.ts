@@ -9,10 +9,12 @@ declare global {
   var addEventListener: InstanceType<typeof stdEventTarget.EventTarget>['addEventListener']
   var removeEventListener: InstanceType<typeof stdEventTarget.EventTarget>['removeEventListener']
   var dispatchEvent: InstanceType<typeof stdEventTarget.EventTarget>['dispatchEvent']
+  type Event = stdEventTarget.Event;
   var Event: typeof stdEventTarget.Event
+  type CustomEvent = stdEventTarget.CustomEvent;
   var CustomEvent: typeof stdEventTarget.CustomEvent
 
-  var console: typeof stdConsole.console
+  var console: typeof stdConsole.default
 
   var setInterval: typeof stdTimersInterval.setInterval
   var clearInterval: typeof stdTimersInterval.clearInterval

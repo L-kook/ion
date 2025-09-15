@@ -3,12 +3,12 @@ declare module "ion:event_target" {
     export type EventListenerOptions = { once?: boolean };
 
     export class EventTarget {
-        addEventListener<Ev extends Event = Event>(
+        addEventListener<Ev = Event>(
             type: string,
             listener: EventListener<Ev>,
             options?: EventListenerOptions
         ): void;
-        removeEventListener<Ev extends Event = Event>(
+        removeEventListener<Ev = Event>(
             type: string,
             listener: EventListener<Ev>
         ): void;

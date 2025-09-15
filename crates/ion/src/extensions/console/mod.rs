@@ -9,6 +9,14 @@ use crate::JsUnknown;
 static MODULE_NAME: &str = "ion:console";
 static BINDING: &str = include_str!("./binding.ts");
 
+pub fn console() -> JsExtension {
+    JsExtension::NativeModuleWithBinding {
+        module_name: MODULE_NAME.to_string(),
+        binding: BINDING.to_string(),
+        extension: Box::new(extension_hook),
+    }
+}
+
 fn extension_hook(
     env: &Env,
     exports: &mut JsObject,
@@ -89,12 +97,4 @@ fn extension_hook(
     )?;
 
     Ok(())
-}
-
-pub fn console() -> JsExtension {
-    JsExtension::NativeModuleWithBinding {
-        module_name: MODULE_NAME.to_string(),
-        binding: BINDING.to_string(),
-        extension: Box::new(extension_hook),
-    }
 }

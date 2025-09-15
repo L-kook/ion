@@ -36,11 +36,12 @@ impl Extension {
                     extension(env, &mut exports)?;
 
                     // Transform extensions written in TypeScript
-                    let source = (*transformers.get("ts").unwrap().transformer)(TransformerContext {
-                        content: binding.as_bytes().to_vec(),
-                        path: PathBuf::from(module_name),
-                        kind: "ts".to_string(),
-                    })?;
+                    let source =
+                        (*transformers.get("ts").unwrap().transformer)(TransformerContext {
+                            content: binding.as_bytes().to_vec(),
+                            path: PathBuf::from(module_name),
+                            kind: "ts".to_string(),
+                        })?;
 
                     // Construct module for binding
                     let module = Module::new(realm, module_name, source.code)?;
@@ -91,11 +92,12 @@ impl Extension {
                     let source_hash = hash_sha256(binding.as_bytes());
 
                     // Transform extensions written in TypeScript
-                    let source = (*transformers.get("ts").unwrap().transformer)(TransformerContext {
-                        content: binding.as_bytes().to_vec(),
-                        path: PathBuf::from(&source_hash),
-                        kind: "ts".to_string(),
-                    })?;
+                    let source =
+                        (*transformers.get("ts").unwrap().transformer)(TransformerContext {
+                            content: binding.as_bytes().to_vec(),
+                            path: PathBuf::from(&source_hash),
+                            kind: "ts".to_string(),
+                        })?;
 
                     // Construct module for binding
                     let module = Module::new(realm, &source_hash, source.code)?;
@@ -127,11 +129,12 @@ impl Extension {
                     let module_map = realm.module_map();
 
                     // Transform extensions written in TypeScript
-                    let source = (*transformers.get("ts").unwrap().transformer)(TransformerContext {
-                        content: binding.as_bytes().to_vec(),
-                        path: PathBuf::from(module_name),
-                        kind: "ts".to_string(),
-                    })?;
+                    let source =
+                        (*transformers.get("ts").unwrap().transformer)(TransformerContext {
+                            content: binding.as_bytes().to_vec(),
+                            path: PathBuf::from(module_name),
+                            kind: "ts".to_string(),
+                        })?;
 
                     // Construct module for binding
                     let module = Module::new(realm, module_name, source.code)?;

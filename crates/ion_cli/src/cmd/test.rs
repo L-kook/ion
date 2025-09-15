@@ -23,7 +23,7 @@ pub fn main(command: TestCommand) -> anyhow::Result<()> {
             entries.push(file.normalize());
         } else {
             entries.push(cwd.join(&file).normalize());
-        }    
+        }
     }
 
     let runtime = ion::JsRuntime::initialize_once()?;
@@ -44,7 +44,6 @@ pub fn main(command: TestCommand) -> anyhow::Result<()> {
     runtime.register_extension(ion::extensions::test())?;
     runtime.register_extension(ion::extensions::global_this())?;
 
-    
     for file in entries {
         let worker = runtime.spawn_worker()?;
         let ctx = worker.create_context()?;
