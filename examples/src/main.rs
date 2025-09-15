@@ -42,6 +42,7 @@ fn main() -> anyhow::Result<()> {
         "testing_memory_usage_module" => testing::memory_usage_module::main(),
         "testing_background_tasks" => testing::background_tasks::main(),
         "testing_transformers" => testing::transformers::main(),
+        "testing_typescript" => testing::typescript::main(),
         _ => Err(anyhow::anyhow!("No example for: \"{}\"", example)),
     }
 }

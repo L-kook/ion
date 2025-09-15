@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 pub struct JsTransformer {
     /// The file extension of the input file handled by this transformer.
     /// Example: "ts"
@@ -10,6 +12,10 @@ pub struct JsTransformer {
 pub struct TransformerContext {
     /// The bytes of the input file
     pub content: Vec<u8>,
+    /// Path to the source file
+    pub path: PathBuf,
+    /// The extension of the file being processed
+    pub kind: String,
 }
 
 pub struct TransformerResult {

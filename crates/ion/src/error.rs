@@ -30,6 +30,7 @@ pub enum Error {
     BackgroundThreadError,
     FileNotFound(String),
     NoTransformerError(String),
+    TransformerError(String),
 }
 
 impl Error {

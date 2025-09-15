@@ -1,3 +1,3 @@
-import data from "./object.json"
+import data from "./object.json";
 
-console.log(data)
+console.log(data);

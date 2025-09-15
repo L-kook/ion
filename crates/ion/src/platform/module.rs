@@ -120,18 +120,21 @@ impl Module {
             return Err(crate::Error::FileNotFound(name.as_ref().to_string()));
         };
 
-        let code = if result.kind != "js" {
-            let Some(transformer) = realm.transformers.get(&result.kind) else {
-                return Err(crate::Error::NoTransformerError(name.as_ref().to_string()));
-            };
+        let code = match result.kind.as_str() {
+            "js" => String::from_utf8(result.code)?,
+            ext => {
+                let Some(transformer) = realm.transformers.get(ext) else {
+                    return Err(crate::Error::NoTransformerError(name.as_ref().to_string()));
+                };
 
-            let transform_result = (*transformer.transformer)(TransformerContext {
-                content: result.code,
-            })?;
+                let transform_result = (*transformer.transformer)(TransformerContext {
+                    kind: ext.to_string(),
+                    path: result.path.clone(),
+                    content: result.code,
+                })?;
 
-            transform_result.code
-        } else {
-            String::from_utf8(result.code)?
+                transform_result.code
+            }
         };
 
         let module = Module::new(realm, result.path.try_to_string()?, code)?;

@@ -8,5 +8,6 @@ pub mod memory_usage_worker;
 pub mod multiple_contexts;
 pub mod multiple_workers;
 pub mod transformers;
+pub mod typescript;
 
 pub use memory_usage::*;
