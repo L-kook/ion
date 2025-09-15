@@ -1,12 +1,17 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::JsExtension;
 use crate::JsObject;
+use crate::JsTransformer;
 use crate::JsValue;
+use crate::TransformerContext;
 use crate::platform::JsRealm;
 use crate::platform::module::Module;
 use crate::platform::module::ModuleStatus;
 use crate::platform::module::init_meta_callback;
+use crate::utils::hash_sha256;
 
 pub struct Extension {}
 
@@ -14,6 +19,7 @@ impl Extension {
     pub fn register_extensions(
         realm: &JsRealm,
         extensions: &Vec<Arc<JsExtension>>,
+        transformers: &HashMap<String, Arc<JsTransformer>>,
     ) -> crate::Result<()> {
         for extension in extensions {
             match extension.as_ref() {
@@ -29,8 +35,15 @@ impl Extension {
                     let mut exports = JsObject::new(env)?;
                     extension(env, &mut exports)?;
 
+                    // Transform extensions written in TypeScript
+                    let source = (*transformers.get("ts").unwrap().transformer)(TransformerContext {
+                        content: binding.as_bytes().to_vec(),
+                        path: PathBuf::from(module_name),
+                        kind: "ts".to_string(),
+                    })?;
+
                     // Construct module for binding
-                    let module = Module::new(realm, module_name, binding)?;
+                    let module = Module::new(realm, module_name, source.code)?;
                     let v8_module = module.v8_module();
                     module_map.insert(module);
 
@@ -73,17 +86,38 @@ impl Extension {
                 }
                 JsExtension::GlobalBinding { binding } => {
                     let env = realm.env();
+                    let module_map = realm.module_map();
+
+                    let source_hash = hash_sha256(binding.as_bytes());
+
+                    // Transform extensions written in TypeScript
+                    let source = (*transformers.get("ts").unwrap().transformer)(TransformerContext {
+                        content: binding.as_bytes().to_vec(),
+                        path: PathBuf::from(&source_hash),
+                        kind: "ts".to_string(),
+                    })?;
+
+                    // Construct module for binding
+                    let module = Module::new(realm, &source_hash, source.code)?;
+                    let v8_module = module.v8_module();
+                    module_map.insert(module);
+
+                    // Initialize binding module
                     let scope = &mut env.scope();
 
-                    let Some(code) = v8::String::new(scope, binding) else {
-                        panic!();
-                    };
+                    // Initialize extension module
+                    scope.set_host_initialize_import_meta_object_callback(init_meta_callback);
 
-                    let Some(script) = v8::Script::compile(scope, code, None) else {
-                        panic!();
-                    };
+                    v8_module
+                        .instantiate_module(scope, Module::v8_initialize_callback)
+                        .unwrap();
 
-                    script.run(scope);
+                    let promise = v8_module.evaluate(scope).unwrap().cast::<v8::Promise>();
+                    scope.perform_microtask_checkpoint();
+                    promise.result(scope);
+
+                    let module = module_map.get_module(source_hash).unwrap();
+                    module.update_status(ModuleStatus::Ready);
                 }
                 JsExtension::BindingModule {
                     module_name,
@@ -92,8 +126,15 @@ impl Extension {
                     let env = realm.env();
                     let module_map = realm.module_map();
 
+                    // Transform extensions written in TypeScript
+                    let source = (*transformers.get("ts").unwrap().transformer)(TransformerContext {
+                        content: binding.as_bytes().to_vec(),
+                        path: PathBuf::from(module_name),
+                        kind: "ts".to_string(),
+                    })?;
+
                     // Construct module for binding
-                    let module = Module::new(realm, module_name, binding)?;
+                    let module = Module::new(realm, module_name, source.code)?;
                     let v8_module = module.v8_module();
                     module_map.insert(module);
 

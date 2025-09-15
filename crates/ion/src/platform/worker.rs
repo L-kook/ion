@@ -124,7 +124,7 @@ fn worker_thread(
                 let realm_id = realm.id();
                 active_context.set(realm.context);
 
-                Extension::register_extensions(&realm, &extensions)?;
+                Extension::register_extensions(&realm, &extensions, &transformers)?;
 
                 realms.insert(realm_id, realm);
                 resolve.try_send((realm_id, tx.clone()))?;

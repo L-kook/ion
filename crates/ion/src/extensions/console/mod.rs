@@ -7,7 +7,7 @@ use crate::JsString;
 use crate::JsUnknown;
 
 static MODULE_NAME: &str = "ion:console";
-static BINDING: &str = include_str!("./binding.js");
+static BINDING: &str = include_str!("./binding.ts");
 
 fn extension_hook(
     env: &Env,

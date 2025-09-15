@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "types": ["./binding.d.ts"],
+        "types": [],
         "module": "ESNext",
         "checkJs": true,
         "noEmit": true,

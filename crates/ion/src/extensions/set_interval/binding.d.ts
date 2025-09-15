@@ -1,16 +1,9 @@
-export {};
+declare module "ion:timers/interval" {
+    export function setInterval(
+        callback: (...args: Array<any>) => any | Promise<any>,
+        duration?: number,
+        ...args: Array<any>
+    ): number;
 
-declare global {
-    var setTimeout: any;
-    var clearTimeout: any;
-
-    interface ImportMeta {
-        extension: {
-            setInterval(
-                callback: () => any | Promise<any>,
-                duration: number
-            ): string;
-            clearInterval(timerRef: string): void;
-        };
-    }
+    export function clearInterval(ref: string): void;
 }

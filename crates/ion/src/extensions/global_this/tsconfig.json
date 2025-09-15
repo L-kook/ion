@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "types": [
+            "./binding.d.ts",
+            "../console/binding.d.ts",
+            "../event_target/binding.d.ts",
+            "../set_interval/binding.d.ts",
+            "../set_timeout/binding.d.ts",
+        ],
+        "module": "ESNext",
+        "checkJs": true,
+        "noEmit": true,
+        "strict": true,
+        "target": "esnext",
+        "lib": ["ESNext"]
+    }
+}

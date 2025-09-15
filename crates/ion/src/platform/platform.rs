@@ -53,6 +53,9 @@ pub(crate) static PLATFORM: LazyLock<Sender<PlatformEvent>> = LazyLock::new(|| {
         let mut resolvers = Vec::<DynResolver>::new();
         let mut transformers = HashMap::<String, Arc<JsTransformer>>::new();
 
+        transformers.insert("ts".to_string(), Arc::new(crate::transformers::ts()));
+        transformers.insert("tsx".to_string(), Arc::new(crate::transformers::tsx()));
+
         while let Ok(event) = rx.recv() {
             match event {
                 PlatformEvent::Init { args } => {

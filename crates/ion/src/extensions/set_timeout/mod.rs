@@ -15,7 +15,7 @@ use crate::thread_safe_function;
 use crate::utils::AtomicRefCounter;
 
 static MODULE_NAME: &str = "ion:timers/timeout";
-static BINDING: &str = include_str!("./binding.js");
+static BINDING: &str = include_str!("./binding.ts");
 
 fn extension_hook(
     env: &Env,

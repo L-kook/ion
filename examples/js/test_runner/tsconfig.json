@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "types": [
+            "../../../crates/ion/src/extensions/console/binding.d.ts",
+            "../../../crates/ion/src/extensions/event_target/binding.d.ts",
+            "../../../crates/ion/src/extensions/set_interval/binding.d.ts",
+            "../../../crates/ion/src/extensions/set_timeout/binding.d.ts",
+            "../../../crates/ion/src/extensions/global_this/binding.d.ts",
+            "../../../crates/ion/src/extensions/test/binding.d.ts",
+        ],
+        "module": "ESNext",
+        "checkJs": true,
+        "noEmit": true,
+        "strict": true,
+        "lib": ["ESNext"]
+    }
+}

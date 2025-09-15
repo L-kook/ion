@@ -15,6 +15,8 @@ enum Commands {
     Run(cmd::run::RunCommand),
     /// Evaluate code from commandline
     Eval(cmd::eval::EvalCommand),
+    /// Run tests
+    Test(cmd::test::TestCommand),
 }
 
 pub fn main() -> anyhow::Result<()> {
@@ -25,5 +27,6 @@ pub fn main() -> anyhow::Result<()> {
     match command.command {
         Commands::Run(command) => cmd::run::main(command),
         Commands::Eval(command) => cmd::eval::main(command),
+        Commands::Test(command) => cmd::test::main(command),
     }
 }
