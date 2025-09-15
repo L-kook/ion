@@ -1,13 +1,13 @@
-use oxc_allocator::Allocator;
-use oxc_ast::ast::SourceType;
-use oxc_codegen::Codegen;
-use oxc_codegen::CodegenOptions;
-use oxc_parser::Parser;
-use oxc_semantic::SemanticBuilder;
-use oxc_transformer::JsxOptions;
-use oxc_transformer::TransformOptions;
-use oxc_transformer::Transformer;
-use oxc_transformer::TypeScriptOptions;
+use oxc::allocator::Allocator;
+use oxc::ast::ast::SourceType;
+use oxc::codegen::Codegen;
+use oxc::codegen::CodegenOptions;
+use oxc::parser::Parser;
+use oxc::semantic::SemanticBuilder;
+use oxc::transformer::JsxOptions;
+use oxc::transformer::TransformOptions;
+use oxc::transformer::Transformer;
+use oxc::transformer::TypeScriptOptions;
 
 use crate::JsTransformer;
 use crate::TransformerContext;
