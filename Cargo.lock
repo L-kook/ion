@@ -782,8 +782,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "flume",
  "ion",
  "normalize-path",
+ "num_cpus",
+ "tokio",
 ]
 
 [[package]]

@@ -31,6 +31,7 @@ pub enum Error {
     FileNotFound(String),
     NoTransformerError(String),
     TransformerError(String),
+    ArrayExpected,
 }
 
 impl Error {

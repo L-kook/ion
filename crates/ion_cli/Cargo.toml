@@ -12,3 +12,6 @@ ion.path = "../ion"
 clap.workspace = true
 anyhow.workspace = true
 normalize-path.workspace = true
+flume.workspace = true
+tokio.workspace = true
+num_cpus.workspace = true

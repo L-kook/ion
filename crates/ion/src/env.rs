@@ -14,7 +14,7 @@ use crate::platform::module::Module;
 use crate::platform::sys;
 use crate::platform::worker::JsWorkerEvent;
 use crate::utils::RefCounter;
-use crate::utils::generate_random_string;
+use crate::utils::hash_sha256;
 
 #[derive(Clone)]
 pub struct Env {
@@ -163,7 +163,7 @@ impl Env {
         let scope = &mut self.scope();
         let realm = JsRealm::v8_revive(scope);
 
-        let module = Module::new(realm, generate_random_string(20), code.as_ref())?;
+        let module = Module::new(realm, hash_sha256(code.as_ref().as_bytes()), code.as_ref())?;
 
         let v8_module = Module::v8_run_module(true, realm, module.name.clone(), module)?;
         let v8_module = v8_module.get_module_namespace().cast::<v8::Object>();

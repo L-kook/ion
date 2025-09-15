@@ -243,12 +243,19 @@ pub trait JsObjectValue: JsValue {
     /// If the `Object` is not an array, `ArrayExpected` error returned
     fn get_element<T>(
         &self,
-        _index: u32,
-    ) -> crate::Result<T>
+        index: u32,
+    ) -> crate::Result<Option<T>>
     where
         T: FromJsValue,
     {
-        todo!();
+        let env = self.env();
+        let scope = &mut env.scope();
+
+        let object = self.value().cast::<v8::Array>();
+        match object.get_index(scope, index) {
+            Some(value) => Ok(Some(T::from_js_value(env, value)?)),
+            None => Ok(None),
+        }
     }
 
     // /// This method allows the efficient definition of multiple properties on a given object.
@@ -260,12 +267,14 @@ pub trait JsObjectValue: JsValue {
     ///
     /// if `Object` is not array, `ArrayExpected` error returned
     fn get_array_length(&self) -> crate::Result<u32> {
-        todo!();
+        let object = self.value().cast::<v8::Array>();
+        Ok(object.length())
     }
 
     /// use this API if you can ensure this `Object` is `Array`
     fn get_array_length_unchecked(&self) -> crate::Result<u32> {
-        todo!();
+        let object = sys::v8_value_cast::<v8::Array, _>(*self.value());
+        Ok(object.length())
     }
 
     /// Wrap the native value `T` to this `Object`
